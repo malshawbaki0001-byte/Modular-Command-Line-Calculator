@@ -19,7 +19,7 @@ while True:
     if model ==1:
         # import standard
 
-        #standard.
+        standard.main_menu()
 
         '''This mode handles basic arithmetic operations
         , similar to a simple calculator.
