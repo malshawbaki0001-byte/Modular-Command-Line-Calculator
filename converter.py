@@ -1,4 +1,5 @@
-while True:
+def main :
+   while True:
     print("--- Converter ---")
     print("1. Length (m, cm, ft, in)")
     print("2. Weight (kg, g, lb, oz)")
