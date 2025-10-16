@@ -27,7 +27,7 @@ def main_menu():
 
         choice = input("Enter your choice: ")
 
-        print("-" * 32,'\n')
+        print("-"*32, '\n')
 
         if choice == '5':
 
