@@ -11,7 +11,7 @@ while True:
           "\n5. Exit ")
     print("-"*42)
 
-    model=eval(input("Enter your choice number: "))
+    model=int(input("Enter your choice number: "))
 
     print("-"*27)
 
