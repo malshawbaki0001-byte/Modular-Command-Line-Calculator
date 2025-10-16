@@ -71,4 +71,3 @@ def main_menu():
             print("Invalid input. Please enter a valid number.\n")
 
 
-#The scientific code has been added by Ali Tariq Althagafi.
