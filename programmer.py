@@ -1,7 +1,23 @@
 def to_base(num, base):
-    """Convert integer to string in given base (2, 8, 10, 16)."""
+    """
+     Converts a decimal integer to a string representation in the specified base.
+
+     Parameters:
+         num (int): The decimal number to convert.
+         base (int): The target base (must be one of 2, 8, 10, or 16).
+
+     Returns:
+         str: The number represented in the target base as a string.
+              Returns an error message if the base is invalid.
+     """
+
     if base == 2:
+        ''' the use of [2:] to remove the type of the new 
+        base for example
+         bin(2) = '0b10',      
+        so we remove '0b' '''
         return bin(num)[2:]
+
     elif base == 8:
         return oct(num)[2:]
     elif base == 10:
@@ -12,14 +28,31 @@ def to_base(num, base):
         return "Error: Invalid base."
 
 def from_base(num_str, base):
-    """Convert string from given base to decimal integer."""
+    """
+      Converts a number string from a given base to its decimal integer value.
+
+      Parameters:
+          num_str (str): The number represented as a string in the given base.
+          base (int): The base of the input number (2, 8, 10, or 16).
+
+      Returns:
+          int or None: The decimal integer value, or None if the input is invalid.
+      """
     try:
         return int(num_str, base)
     except ValueError:
         return None
 
 def input_int(prompt):
-    """Safely get an integer input."""
+    """
+    Prompts the user to enter an integer and validates the input.
+
+    Parameters:
+        prompt (str): The message displayed to the user.
+
+    Returns:
+        int or None: The entered integer, or None if the input is invalid.
+    """
     try:
         return int(input(prompt))
     except ValueError:
@@ -27,10 +60,21 @@ def input_int(prompt):
         return None
 
 def base_conversion():
+    """
+     Handles base conversion operations in Programmer Mode.
+
+     Options:
+         1. Converts a decimal number to binary, octal, or hexadecimal.
+         2. Converts a binary, octal, or hexadecimal number to decimal.
+
+     Prompts the user for input, validates base and number formats,
+     and displays the conversion result or appropriate error messages.
+     """
+
     print("\nBase Conversion Options:")
     print("1. Decimal to Binary/Octal/Hex")
     print("2. Binary/Octal/Hex to Decimal")
-    choice = input("Enter choice: ").strip()
+    choice = input("Enter choice (1 or 2 ): ").strip()
 
     if choice == "1":
         n = input_int("Enter decimal: ")
@@ -63,6 +107,21 @@ def base_conversion():
         print("Error: Invalid choice.")
 
 def bitwise_operations():
+    """
+     Performs bitwise operations between integers.
+
+     Available operations:
+         1. AND (&)
+         2. OR (|)
+         3. XOR (^)
+         4. NOT (~)
+         5. Left Shift (<<)
+         6. Right Shift (>>)
+
+     Prompts the user to select an operation and enter operands.
+     Validates input and displays the result or error messages.
+     """
+
     print("\nBitwise Operations:")
     print("1. AND (&)")
     print("2. OR (|)")
@@ -102,14 +161,14 @@ def bitwise_operations():
     else:
         print("Error: Invalid choice.")
 
-def main():
+def main_menu():
     print("=== Programmer Mode ===")
     while True:
         print("\nMenu:")
         print("1. Base Conversion")
         print("2. Bitwise Operations")
         print("3. Exit")
-        choice = input("Enter choice: ").strip()
+        choice = input("Enter choice (1, 2 or 3): ").strip()
         if choice == "1":
             base_conversion()
         elif choice == "2":
@@ -120,6 +179,4 @@ def main():
         else:
             print("Error: Invalid choice.")
 
-if __name__ == "__main__":
-    main()
 
