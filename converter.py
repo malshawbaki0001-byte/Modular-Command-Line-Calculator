@@ -1,18 +1,38 @@
-def main() :
-   while True:
-    print("--- Converter ---")
+def main_menu() :
+    """
+       Displays the Converter Mode menu and handles user input for unit conversions.
+
+       Available conversion categories:
+           1. Length: Converts between meters (m), centimeters (cm), feet (ft), and inches (in).
+           2. Weight: Converts between kilograms (kg), grams (g), pounds (lb), and ounces (oz).
+           3. Temperature: Converts between Celsius (C), Fahrenheit (F), and Kelvin (K).
+           4. Exit: Returns to the main menu.
+
+       The function prompts the user to select a conversion category, then requests
+       source and target units along with a numeric value. It validates input, performs
+       the conversion using predefined formulas, and displays the result.
+
+       Handles invalid unit selections, negative values (where not allowed), and
+       non-numeric input gracefully.
+       """
+
+
+while True:
+    print("--- Converter Mode ---")
     print("1. Length (m, cm, ft, in)")
     print("2. Weight (kg, g, lb, oz)")
     print("3. Temperature (C, F, K)")
-    print("4. Exit")
-
+    print("4. Exit Converter Mode")
+    print("-"*22)
     choice = input("Select (1 to 4): ")
-
+    print("-" * 22,"\n")
     if choice == "1":
-        print("Length")
-        value = float(input("Value: "))
-        from_unit = input("From (m/cm/ft/in): ")
-        to_unit = input("To (m/cm/ft/in): ")
+        print("\n"
+              "----------------- Length -----------------\n")
+        from_unit = input(""
+              "Select your value unit from (m/cm/ft/in): ").lower()# use [.lower()] helps To avoid input errors ##ALSHOBAKI##
+        value = float(input("Enter the value: "))
+        to_unit = input("Select the unit you want to convert the value to (m/cm/ft/in): ").lower()
 
         if from_unit not in ["m", "cm", "ft", "in"] or to_unit not in ["m", "cm", "ft", "in"]:
             print(" Units must be one of: m, cm, ft, in")
@@ -36,17 +56,19 @@ def main() :
         elif to_unit == "cm":
             result = meter * 100
         elif to_unit == "ft":
-            result = meter * 3.28084 
+            result = meter * 3.28084
         elif to_unit == "in":
             result = meter * 39.3701
 
         print(f" {value} {from_unit} = {result:.2f} {to_unit}")
 
     elif choice == "2":
-        print("Weight")
-        value = float(input("Value: "))
-        from_unit = input("From (kg/g/lb/oz): ")
-        to_unit = input("To (kg/g/lb/oz): ")
+        print("\n\n"
+              "----------------- Weight -----------------\n")
+        from_unit = input(""
+              "Select your value unit from (kg/g/lb/oz): ").lower()# use [.lower()] helps To avoid input errors ##ALSHOBAKI##
+        value = float(input("Enter the value: "))
+        to_unit = input("Select the unit you want to convert the value to (kg/g/lb/oz): ").lower()
 
         if from_unit not in ["kg", "g", "lb", "oz"] or to_unit not in ["kg", "g", "lb", "oz"]:
             print(" Units must be one of: kg, g, lb, oz")
@@ -77,10 +99,13 @@ def main() :
         print(f" {value} {from_unit} = {result:.2f} {to_unit}")
 
     elif choice == "3":
-        print("Temperature")
-        value = float(input("Value: "))
-        from_unit = input("From (C/F/K): ")
-        to_unit = input("To (C/F/K): ")
+        print("\n\n"
+              "-------------- Temperature --------------\n")
+
+        from_unit = input(""
+              "Select your value unit from (C , F or K): ").upper()# # use [.upper()] helps To avoid input errors ##ALSHOBAKI##
+        value = float(input("Enter the value: "))
+        to_unit = input("\n Select the unit you want to convert the value to w (C , F or K): ").upper()
 
         if from_unit not in ["C", "F", "K"] or to_unit not in ["C", "F", "K"]:
             print(" Units must be one of: C, F, K")
@@ -103,9 +128,8 @@ def main() :
         print(f"{value} {from_unit} = {result:.2f} {to_unit}")
 
     elif choice == "4":
-        print("Goodbye ")
+        print("Exiting Converter Mode. Returning to Main Menu. ")
         break
 
     else:
         print(" Invalid choice. Please select from 1 to 4.")
-
