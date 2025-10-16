@@ -36,10 +36,10 @@ def main_menu():
        performs the calculation using Python's math module, and displays the result.
        Handles invalid numeric input and domain errors gracefully.
        """
-
-    print("\n"
-              "================== Standard Mode ===================")
     while True:
+        print("\n"
+              "================== Standard Mode ===================")
+
         print(" 1. Addition (+)         |    6. Exponent (**)\n"
               " 2. Subtraction (-)      |    7. Square Root (√)\n"
               " 3. Multiplication (*)   |    8. Reciprocal (1/x)\n"
@@ -70,13 +70,16 @@ def main_menu():
             elif choice == "3":
                 result = num1 * num2
             elif choice == "4":
-                if num2 == 0: 
-                    print("Error: Cannot divide by zero.")
+                if num2 == 0:
+                    print("\nError: Cannot divide by zero.\n"
+                           ,"-----------------------------\n")
+
                     continue
                 result = num1 / num2
             elif choice == "5":
                 if num2 == 0:
-                    print("Error: Cannot divide by zero.")
+                    print("\nError: Cannot divide by zero.\n"
+                           ,"-----------------------------\n")
                     continue
                 result = num1 % num2
             elif choice == "6":
@@ -87,18 +90,25 @@ def main_menu():
             num = get_number("Enter a number: ")
             if num is None:
                 continue
-            print(
-                "Error: Cannot take square root of a negative number in Standard Mode."
-                if num < 0 else f"Result: {math.sqrt(num)}"
+            if num < 0:
+                print(
+                "\nError: Cannot take square root of a negative number in Standard Mode.\n"
+                 ,"---------------------------------------------------------------------\n")
+
+            else:
+                print(f"Result: {math.sqrt(num)}"
             )
 
         elif choice == "8":
             num = get_number("Enter a number: ")
             if num is None:
                 continue
-            print(
-                "Error: Cannot divide by zero."
-                if num == 0 else f"Result: {1 / num}"
+            if num == 0
+                print(
+                "\nError: Cannot divide by zero.\n"
+               ,"-------------------------------\n")
+            else:
+                print(f"Result: {1 / num}"
             )
 
         elif choice == "9":
@@ -108,7 +118,8 @@ def main_menu():
                 continue
             print("Result:", (a * b) / 100)
         else:
-            print("Invalid choice. Please enter a number from 1 to 10.")
+            print("\nInvalid choice. Please enter a number from 1 to 10.\n"
+                    ,"--------------------------------------------------\n")
 
 
 def is_number(value):
