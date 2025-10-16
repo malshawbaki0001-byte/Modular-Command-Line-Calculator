@@ -41,5 +41,3 @@ def scientific_main_menu():
         except ValueError:
             print("Invalid input. Please enter a valid number.\n")
 
-
-#The scientific code has been added by Ali Tariq Althagafi.
