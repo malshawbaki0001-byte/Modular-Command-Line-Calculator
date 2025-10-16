@@ -13,7 +13,7 @@ def get_number(message):
 
     n = input(message)
     if not is_number(n):
-        print("Error: Please enter a valid number.")
+        print("\nError: Please enter a valid number.\n")
         return None
     return float(n)
 def main_menu():
@@ -59,6 +59,8 @@ def main_menu():
 
         if choice in ["1", "2", "3", "4", "5", "6"]:
             num1 = get_number("Enter first number: ")
+            if num1 is None:
+                continue
             num2 = get_number("Enter second number: ")
             if num1 is None or num2 is None:
                 continue
@@ -103,7 +105,7 @@ def main_menu():
             num = get_number("Enter a number: ")
             if num is None:
                 continue
-            if num == 0
+            if num == 0:
                 print(
                 "\nError: Cannot divide by zero.\n"
                ,"-------------------------------\n")
