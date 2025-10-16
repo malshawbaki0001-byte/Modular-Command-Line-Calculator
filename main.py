@@ -11,23 +11,24 @@ while True:
           "\n5. Exit ")
     print("-"*42)
 
-    model=int(input("Enter your choice number: "))
+    model=input("Enter your choice number: ").strip()#to remove whitespace
+
 
     print("-"*27)
 
 
-    if model ==1:
+    if model =="1":
 
         '''This mode handles basic arithmetic operations
          , similar to a simple calculator.
                 '''
         import standard
-        
+
         print("\n")
-        
+
         standard.main_menu()
 
-    elif model ==2:
+    elif model =="2":
 
         '''This mode focuses on operations useful for
                  programmers, including base conversions and 
@@ -39,30 +40,30 @@ while True:
 
         programmer.main_menu()
 
-    elif model ==3:
-      
+    elif model =="3":
+
         '''This mode includes advanced mathematical 
                functions, leveraging Python's math module.
                '''
         import scientific
-        
-        
+
+
         scientific.main_menu()
-    
+
         print("\n")
 
-    elif model ==4:
+    elif model =="4":
 
         '''This mode handles unit conversions
                 across categories.
                 '''
         import converter
-       
+
         print("\n")
-       
+
         converter.main_menu()
-       
-    elif model ==5:
+
+    elif model =="5":
         print("\n\n\n\n\n")
 
         print("-"*46,"\n| Thank you for using Multi-Mode Calculator  |\n"+"-"*46)
