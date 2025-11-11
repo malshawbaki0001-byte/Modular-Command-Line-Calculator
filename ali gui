@@ -1,0 +1,1132 @@
+import sys
+import random 
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QHBoxLayout, QVBoxLayout, 
+    QPushButton, QListWidget, QListWidgetItem, QLabel, QFrame,
+    QMessageBox, QDialog, QLineEdit, QFormLayout,
+    QTableWidget, QTableWidgetItem, QHeaderView,
+    QComboBox, 
+    QGraphicsDropShadowEffect,
+    QStatusBar,
+    # (تمت إضافة أزرار الراديو ومجموعة الأزرار)
+    QRadioButton, QButtonGroup
+)
+from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtGui import QFont, QColor
+
+# --- (الأنماط - محدثة بستايل زر الراديو) ---
+
+LIGHT_MODE_QSS = """
+QDialog, QWidget { background-color: #f0f2f5; font-family: "Arial", sans-serif; color: #333; }
+QFrame[class="card"], QWidget[class="card"] { background-color: #ffffff; border-radius: 10px; }
+QLabel { font-size: 14px; font-weight: bold; color: #333; }
+QLabel#TitleLabel { font-size: 24px; font-weight: bold; color: #003366; }
+QLineEdit, QComboBox {
+    font-size: 14px; padding: 10px 15px; border: 1px solid #d0d0d0;
+    border-radius: 5px; background-color: #fafafa; color: black;
+}
+QLineEdit:focus, QComboBox:focus { border: 1px solid #007bff; }
+QPushButton {
+    font-size: 14px; font-weight: bold; color: white;
+    padding: 12px; border-radius: 5px; border: none; margin-top: 5px;
+    background-color: #007bff; 
+}
+QPushButton:hover { background-color: #0056b3; }
+QPushButton[class="secondary"] { background-color: #6c757d; }
+QPushButton[class="secondary"]:hover { background-color: #5a6268; }
+QPushButton[class="danger"] { background-color: #dc3545; }
+QPushButton[class="danger"]:hover { background-color: #c82333; }
+QTableWidget {
+    background-color: #ffffff; border: 1px solid #d0d0d0;
+    border-radius: 5px; font-size: 13px;
+    selection-background-color: #007bff; selection-color: white;
+}
+QHeaderView::section {
+    background-color: #f8f9fa; padding: 8px; border: none;
+    border-bottom: 1px solid #d0d0d0; font-weight: bold;
+}
+QListWidget {
+    background-color: #ffffff; border: 1px solid #d0d0d0;
+    border-radius: 5px; font-size: 14px;
+}
+QListWidget::item { padding: 10px; }
+QListWidget::item:selected { background-color: #007bff; color: white; }
+QListWidget::item:disabled { color: #999; background-color: #f9f9f9; }
+QStatusBar { color: #333; font-weight: bold; }
+QPushButton[class="theme_button"] {
+    background-color: #e0e0e0;
+    color: #333;
+    font-size: 16px; font-weight: bold;
+    padding: 0px; margin-top: 0px;
+    min-width: 30px; max-width: 30px;
+    min-height: 30px; max-height: 30px;
+    border-radius: 15px; /* دائري */
+}
+QPushButton[class="theme_button"]:hover { background-color: #d0d0d0; }
+
+/* --- (جديد: تعديل زر الاختيار للوضع الفاتح) --- */
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 9px; /* دائري */
+    border: 2px solid #999;
+    background-color: #f0f0f0;
+}
+QRadioButton::indicator:hover {
+    border: 2px solid #007bff; /* إطار أزرق عند التأشير */
+}
+QRadioButton::indicator:checked {
+    border: 2px solid #007bff; /* إطار أزرق عند الاختيار */
+    /* إنشاء نقطة زرقاء في المنتصف */
+    background-color: qradialgradient(
+        cx:0.5, cy:0.5, radius: 0.5, fx:0.5, fy:0.5, 
+        stop:0.4 #007bff,  /* النقطة الزرقاء */
+        stop:0.5 #f0f0f0   /* الخلفية البيضاء حولها */
+    );
+}
+QRadioButton::indicator:disabled {
+    border: 2px solid #ccc;
+    background-color: #f9f9f9;
+}
+/* --- (نهاية التعديل) --- */
+"""
+
+DARK_MODE_QSS = """
+QDialog, QWidget { background-color: #2b2b2b; font-family: "Arial", sans-serif; color: #f0f0f0; }
+QFrame[class="card"], QWidget[class="card"] { background-color: #3c3c3c; border-radius: 10px; }
+QLabel { font-size: 14px; font-weight: bold; color: #f0f0f0; }
+QLabel#TitleLabel { font-size: 24px; font-weight: bold; color: #aaccff; }
+QLineEdit, QComboBox {
+    font-size: 14px; padding: 10px 15px; border: 1px solid #555;
+    border-radius: 5px; background-color: #444; color: #f0f0f0;
+}
+QLineEdit:focus, QComboBox:focus { border: 1px solid #007bff; }
+QPushButton {
+    font-size: 14px; font-weight: bold; color: white;
+    padding: 12px; border-radius: 5px; border: none; margin-top: 5px;
+    background-color: #007bff;
+}
+QPushButton:hover { background-color: #0056b3; }
+QPushButton[class="secondary"] { background-color: #6c757d; }
+QPushButton[class="secondary"]:hover { background-color: #5a6268; }
+QPushButton[class="danger"] { background-color: #dc3545; }
+QPushButton[class="danger"]:hover { background-color: #c82333; }
+QTableWidget {
+    background-color: #3c3c3c; border: 1px solid #555;
+    border-radius: 5px; font-size: 13px;
+    selection-background-color: #007bff; selection-color: white;
+}
+QHeaderView::section {
+    background-color: #444; padding: 8px; border: none;
+    border-bottom: 1px solid #555; font-weight: bold; color: #f0f0f0;
+}
+QListWidget {
+    background-color: #3c3c3c; border: 1px solid #555;
+    border-radius: 5px; font-size: 14px;
+}
+QListWidget::item { padding: 10px; }
+QListWidget::item:selected { background-color: #007bff; color: white; }
+QListWidget::item:disabled { color: #777; background-color: #333; }
+QStatusBar { color: #f0f0f0; font-weight: bold; }
+QPushButton[class="theme_button"] {
+    background-color: #555;
+    color: #f0f0f0;
+    font-size: 16px; font-weight: bold;
+    padding: 0px; margin-top: 0px;
+    min-width: 30px; max-width: 30px;
+    min-height: 30px; max-height: 30px;
+    border-radius: 15px; /* دائري */
+}
+QPushButton[class="theme_button"]:hover { background-color: #666; }
+
+/* --- (جديد: تعديل زر الاختيار للوضع الداكن) --- */
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 9px; /* دائري */
+    border: 2px solid #777;
+    background-color: #444;
+}
+QRadioButton::indicator:hover {
+    border: 2px solid #007bff; /* إطار أزرق عند التأشير */
+}
+QRadioButton::indicator:checked {
+    border: 2px solid #007bff; /* إطار أزرق عند الاختيار */
+    /* إنشاء نقطة زرقاء في المنتصف */
+    background-color: qradialgradient(
+        cx:0.5, cy:0.5, radius: 0.5, fx:0.5, fy:0.5, 
+        stop:0.4 #007bff,  /* النقطة الزرقاء */
+        stop:0.5 #444      /* الخلفية الداكنة حولها */
+    );
+}
+QRadioButton::indicator:disabled {
+    border: 2px solid #555;
+    background-color: #333;
+}
+/* --- (نهاية التعديل) --- */
+"""
+
+# --- (قاعدة بيانات وهمية) ---
+USER_DB = {}
+
+# --- (قاعدة بيانات المواد المحدثة) ---
+MOCK_COURSES = {
+    'CS101': {
+        'name': 'مقدمة البرمجة', 'credit_hours': 3,
+        'prerequisites': [], # لا متطلبات
+        'sections': [
+            {'id': 'CS101_1', 'start': 9, 'end': 10, 'instructor': 'د. أحمد عبدالله', 'hall': '101-ب', 'max_capacity': 50, 'current_enrollment': 45},
+            {'id': 'CS101_2', 'start': 11, 'end': 12, 'instructor': 'د. خالد الغامدي', 'hall': '102-ب', 'max_capacity': 50, 'current_enrollment': 50}, # ممتلئة
+        ]
+    },
+    'MATH201': {
+        'name': 'مادة الرياضيات', 'credit_hours': 3,
+        'prerequisites': [], # لا متطلبات
+        'sections': [
+            {'id': 'MATH201_1', 'start': 9, 'end': 10, 'instructor': 'أ. فهد', 'hall': '201-ج', 'max_capacity': 40, 'current_enrollment': 30},
+            {'id': 'MATH201_2', 'start': 10, 'end': 11, 'instructor': 'أ. رامي', 'hall': '202-ج', 'max_capacity': 40, 'current_enrollment': 38},
+        ]
+    },
+    'CIRC210': {
+        'name': 'الدوائر الكهربائية', 'credit_hours': 3,
+        'prerequisites': ['MATH201'], # متطلب: رياضيات
+        'sections': [
+            {'id': 'CIRC210_1', 'start': 10, 'end': 11, 'instructor': 'د. عمر خالد', 'hall': '301-أ', 'max_capacity': 30, 'current_enrollment': 25},
+            {'id': 'CIRC210_2', 'start': 11, 'end': 12, 'instructor': 'د. مروان', 'hall': '302-أ', 'max_capacity': 30, 'current_enrollment': 29},
+        ]
+    },
+    'ENGR101': {
+        'name': 'الرسم الهندسي', 'credit_hours': 2,
+        'prerequisites': [],
+        'sections': [
+            {'id': 'ENGR101_1', 'start': 8, 'end': 10, 'instructor': 'د. رامي', 'hall': 'ورشة 1', 'max_capacity': 20, 'current_enrollment': 15},
+            {'id': 'ENGR101_2', 'start': 10, 'end': 12, 'instructor': 'د. هاني', 'hall': 'ورشة 2', 'max_capacity': 20, 'current_enrollment': 18},
+        ]
+    },
+    'MATH301': {
+        'name': 'كومبلكس', 'credit_hours': 3,
+        'prerequisites': ['MATH201'], # متطلب: رياضيات
+        'sections': [
+            {'id': 'MATH301_1', 'start': 9, 'end': 10, 'instructor': 'د. برهان', 'hall': '401-أ', 'max_capacity': 40, 'current_enrollment': 40}, # ممتلئة
+            {'id': 'MATH301_2', 'start': 11, 'end': 12, 'instructor': 'د. عاطف', 'hall': '402-أ', 'max_capacity': 40, 'current_enrollment': 35},
+        ]
+    },
+    'COMM310': {
+        'name': 'مبادئ الاتصالات', 'credit_hours': 3,
+        'prerequisites': ['CIRC210'], # متطلب: دوائر
+        'sections': [
+            {'id': 'COMM310_1', 'start': 13, 'end': 14, 'instructor': 'د. سامي', 'hall': '501-أ', 'max_capacity': 30, 'current_enrollment': 10},
+        ]
+    }
+}
+
+# --- (خطط البرامج وحدود الساعات) ---
+PROGRAM_PLANS = {
+    'Computer': {
+        'Level 1': ['CS101', 'MATH201', 'ENGR101'],
+        'Level 2': ['CIRC210', 'MATH301']
+    },
+    'Communications': {
+        'Level 1': ['CS101', 'MATH201', 'ENGR101'],
+        'Level 2': ['CIRC210', 'COMM310']
+    },
+    'Power': {
+        'Level 1': ['CS101', 'MATH201', 'ENGR101'],
+        'Level 2': ['CIRC210', 'MATH301']
+    },
+    'Biomedical': {
+        'Level 1': ['CS101', 'MATH201'],
+        'Level 2': ['CIRC210', 'MATH301']
+    }
+}
+
+CREDIT_LIMITS = {
+    'min': 12,
+    'max': 18
+}
+
+# --- (دوال مساعدة) ---
+def apply_shadow(widget):
+    shadow = QGraphicsDropShadowEffect()
+    shadow.setBlurRadius(25)
+    shadow.setColor(QColor(0, 0, 0, 80))
+    shadow.setOffset(0, 5)
+    widget.setGraphicsEffect(shadow)
+    
+def get_section_data(section_id_to_find):
+    for course_code, course_info in MOCK_COURSES.items():
+        for section in course_info['sections']:
+            if section['id'] == section_id_to_find:
+                section_data = section.copy()
+                section_data['course_name'] = course_info['name']
+                section_data['course_code'] = course_code
+                section_data['credit_hours'] = course_info['credit_hours']
+                section_data['prerequisites'] = course_info['prerequisites']
+                return section_data
+    return None
+
+def calculate_passed_hours(transcript_list):
+    total_hours = 0
+    for course_code in transcript_list:
+        if course_code in MOCK_COURSES:
+            total_hours += MOCK_COURSES[course_code]['credit_hours']
+    return total_hours
+
+# --- نافذة إنشاء الحساب (محدثة) ---
+class RegisterWindow(QDialog):
+    def __init__(self, role='student', parent=None):
+        super().__init__(parent)
+        self.role = role
+        self.setWindowTitle(f'إنشاء حساب {self.role} جديد')
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.setModal(True) 
+        self.setGeometry(0, 0, 600, 500) 
+
+        card_widget = QWidget()
+        card_widget.setProperty("class", "card")
+        card_widget.setFixedWidth(400)
+        card_widget.setFixedHeight(450) 
+        apply_shadow(card_widget)
+        
+        card_layout = QVBoxLayout(card_widget)
+        card_layout.setContentsMargins(30, 30, 30, 30)
+        card_layout.setSpacing(15)
+        
+        title = QLabel(f'إنشاء حساب {self.role} جديد')
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setObjectName("TitleLabel")
+        card_layout.addWidget(title)
+        
+        form_layout = QFormLayout()
+        self.name_input = QLineEdit()
+        self.email_input = QLineEdit()
+        self.mobile_input = QLineEdit()
+        
+        form_layout.addRow('الاسم الكامل:', self.name_input)
+        form_layout.addRow('البريد الإلكتروني:', self.email_input)
+        form_layout.addRow('رقم الجوال:', self.mobile_input)
+        
+        if self.role == 'student':
+            self.program_combo = QComboBox()
+            self.program_combo.addItems(PROGRAM_PLANS.keys())
+            form_layout.addRow('البرنامج:', self.program_combo)
+            
+            self.level_combo = QComboBox()
+            self.level_combo.addItems(['Level 1', 'Level 2']) 
+            form_layout.addRow('المستوى الحالي:', self.level_combo)
+        
+        card_layout.addLayout(form_layout)
+        card_layout.addStretch()
+
+        self.register_button = QPushButton('إنشاء الحساب')
+        self.register_button.clicked.connect(self.create_account)
+        card_layout.addWidget(self.register_button)
+
+        main_layout = QHBoxLayout(self)
+        main_layout.addStretch()
+        main_layout.addWidget(card_widget)
+        main_layout.addStretch()
+
+    def create_account(self):
+        name = self.name_input.text()
+        email = self.email_input.text()
+        mobile = self.mobile_input.text()
+        if not name or not email or not mobile:
+            QMessageBox.warning(self, 'خطأ', 'الرجاء ملء جميع الحقول')
+            return
+            
+        new_password = "pass123"
+        
+        if self.role == 'student':
+            program = self.program_combo.currentText()
+            level = self.level_combo.currentText()
+            
+            if level == 'Level 2':
+                mock_transcript = PROGRAM_PLANS[program]['Level 1']
+            else:
+                mock_transcript = [] 
+            
+            while True:
+                new_academic_id = str(random.randint(100000, 999999))
+                if new_academic_id not in USER_DB: break
+            
+            USER_DB[new_academic_id] = {
+                'password': new_password, 'name': name, 'email': email,
+                'mobile': mobile, 'role': 'student',
+                'program': program, 
+                'level': level,     
+                'transcript': mock_transcript, 
+                'schedule': [] 
+            }
+            passed_hours = calculate_passed_hours(mock_transcript)
+            msg = (f"المعرف الجامعي: {new_academic_id}\nكلمة المرور: {new_password}\n"
+                   f"البرنامج: {program} - {level}\n"
+                   f"(تم تسجيل {passed_hours} ساعة مجتازة لك بناءً على سجلك)")
+        else:
+            first_name = name.split()[0].lower()
+            new_academic_id = f"dr_{first_name}{len(USER_DB) + 1}"
+            USER_DB[new_academic_id] = {
+                'password': new_password, 'name': name, 'email': email,
+                'mobile': mobile, 'role': 'doctor'
+            }
+            msg = (f"معرف الدكتور: {new_academic_id}\nكلمة المرور: {new_password}")
+            
+        QMessageBox.information(self, 'تم إنشاء الحساب بنجاح', msg)
+        self.accept()
+
+# --- نافذة تسجيل الدخول ---
+class LoginWindow(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('تسجيل الدخول - نظام ODUS')
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.setGeometry(0, 0, 800, 600) 
+        self.current_user_id = None
+        self.current_user_role = None
+        self.is_dark_mode = False 
+
+        window_layout = QVBoxLayout(self)
+        
+        top_bar_layout = QHBoxLayout()
+        top_bar_layout.setContentsMargins(10, 10, 10, 0)
+        self.theme_button = QPushButton("🌙")
+        self.theme_button.setProperty("class", "theme_button")
+        self.theme_button.clicked.connect(self.toggle_theme)
+        top_bar_layout.addWidget(self.theme_button)
+        top_bar_layout.addStretch()
+        window_layout.addLayout(top_bar_layout)
+
+        main_layout = QHBoxLayout()
+        login_frame = QWidget()
+        login_frame.setProperty("class", "card") 
+        login_frame.setFixedWidth(450)
+        login_frame.setFixedHeight(500)
+        apply_shadow(login_frame) 
+
+        card_layout = QVBoxLayout(login_frame)
+        card_layout.setContentsMargins(40, 40, 40, 40)
+        card_layout.setSpacing(20) 
+        title_label = QLabel("نظام التسجيل الجامعي")
+        title_label.setObjectName("TitleLabel")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(title_label)
+        card_layout.addSpacing(20)
+        form_layout = QFormLayout()
+        form_layout.setSpacing(15)
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        self.id_input = QLineEdit()
+        self.id_input.setPlaceholderText('المعرف (مثال: 123456)')
+        self.pass_input = QLineEdit()
+        self.pass_input.setEchoMode(QLineEdit.EchoMode.Password) 
+        self.pass_input.setPlaceholderText('كلمة المرور')
+        form_layout.addRow(QLabel("المعرف:"), self.id_input)
+        form_layout.addRow(QLabel("كلمة المرور:"), self.pass_input)
+        card_layout.addLayout(form_layout)
+        card_layout.addStretch(1) 
+        self.login_button = QPushButton('تسجيل الدخول')
+        self.register_student_button = QPushButton('إنشاء حساب طالب جديد')
+        self.register_student_button.setProperty("class", "secondary") 
+        self.register_doctor_button = QPushButton('إنشاء حساب دكتور جديد')
+        self.register_doctor_button.setProperty("class", "secondary") 
+        card_layout.addWidget(self.login_button)
+        card_layout.addWidget(self.register_student_button)
+        card_layout.addWidget(self.register_doctor_button)
+        
+        main_layout.addStretch()
+        main_layout.addWidget(login_frame)
+        main_layout.addStretch()
+        
+        window_layout.addLayout(main_layout)
+        window_layout.addStretch() 
+
+        self.login_button.clicked.connect(self.handle_login)
+        self.register_student_button.clicked.connect(self.handle_register_student)
+        self.register_doctor_button.clicked.connect(self.handle_register_doctor)
+
+    def toggle_theme(self):
+        app = QApplication.instance()
+        self.is_dark_mode = not self.is_dark_mode
+        if self.is_dark_mode:
+            app.setStyleSheet(DARK_MODE_QSS)
+            self.theme_button.setText("☀️")
+        else:
+            app.setStyleSheet(LIGHT_MODE_QSS)
+            self.theme_button.setText("🌙")
+
+    def handle_login(self):
+        academic_id = self.id_input.text()
+        password = self.pass_input.text()
+        if academic_id in USER_DB and USER_DB[academic_id]['password'] == password:
+            self.current_user_id = academic_id
+            self.current_user_role = USER_DB[academic_id]['role']
+            self.accept()
+        else:
+            QMessageBox.warning(self, 'خطأ', 'المعرف أو كلمة المرور غير صحيحة')
+            
+    def handle_register_student(self):
+        register_dialog = RegisterWindow(role='student', parent=self)
+        register_dialog.exec()
+        
+    def handle_register_doctor(self):
+        register_dialog = RegisterWindow(role='doctor', parent=self)
+        register_dialog.exec()
+
+# --- نافذة عرض الجدول ---
+class ScheduleWindow(QDialog):
+    def __init__(self, user_id, parent=None):
+        super().__init__(parent)
+        self.user_id = user_id
+        student_name = USER_DB[self.user_id]["name"]
+        self.setWindowTitle(f'الجدول الدراسي للطالب: {student_name}')
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.setGeometry(150, 150, 800, 300)
+        self.setModal(True) 
+        layout = QVBoxLayout(self)
+        self.table = QTableWidget()
+        layout.addWidget(self.table)
+        self.setup_table()
+        
+    def setup_table(self):
+        registered_schedule = USER_DB[self.user_id].get('schedule', [])
+        registered_section_ids = [item['id'] for item in registered_schedule]
+        
+        self.table.setColumnCount(6) 
+        self.table.setHorizontalHeaderLabels(['رمز المادة', 'اسم المادة', 'الوقت', 'المدرس', 'القاعة', 'الساعات'])
+        self.table.setRowCount(len(registered_section_ids))
+        total_hours = 0
+        for row, section_id in enumerate(registered_section_ids):
+            data = get_section_data(section_id)
+            if data:
+                hours = data['credit_hours']
+                total_hours += hours
+                self.table.setItem(row, 0, QTableWidgetItem(data['course_code']))
+                self.table.setItem(row, 1, QTableWidgetItem(data['course_name']))
+                self.table.setItem(row, 2, QTableWidgetItem(f"{data['start']}:00 - {data['end']}:00"))
+                self.table.setItem(row, 3, QTableWidgetItem(data['instructor']))
+                self.table.setItem(row, 4, QTableWidgetItem(data['hall']))
+                self.table.setItem(row, 5, QTableWidgetItem(str(hours)))
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setRowCount(len(registered_section_ids) + 1)
+        total_label = QTableWidgetItem(f"إجمالي الساعات المسجلة: {total_hours}")
+        total_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        self.table.setItem(len(registered_section_ids), 4, total_label)
+
+# --- نافذة عرض السجل الأكاديمي ---
+class TranscriptWindow(QDialog):
+    def __init__(self, user_id, parent=None):
+        super().__init__(parent)
+        self.user_id = user_id
+        student_name = USER_DB[self.user_id]["name"]
+        self.setWindowTitle(f'السجل الأكاديمي للطالب: {student_name}')
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.setGeometry(150, 150, 600, 400)
+        self.setModal(True)
+        layout = QVBoxLayout(self)
+        self.table = QTableWidget()
+        layout.addWidget(self.table)
+        self.setup_table()
+
+    def setup_table(self):
+        transcript = USER_DB[self.user_id].get('transcript', [])
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(['رمز المادة', 'اسم المادة', 'الساعات المعتمدة'])
+        self.table.setRowCount(len(transcript))
+        total_hours = 0
+        for row, course_code in enumerate(transcript):
+            course_data = MOCK_COURSES.get(course_code)
+            if course_data:
+                hours = course_data['credit_hours']
+                total_hours += hours
+                self.table.setItem(row, 0, QTableWidgetItem(course_code))
+                self.table.setItem(row, 1, QTableWidgetItem(course_data['name']))
+                self.table.setItem(row, 2, QTableWidgetItem(str(hours)))
+        
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setRowCount(len(transcript) + 1)
+        total_label = QTableWidgetItem(f"إجمالي الساعات المجتازة: {total_hours}")
+        total_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        self.table.setItem(len(transcript), 2, total_label)
+
+# --- نافذة تسجيل الطالب (محدثة بأزرار الراديو) ---
+class RegistrationApp(QWidget):
+    def __init__(self, user_id):
+        super().__init__()
+        self.user_id = user_id 
+        self.setWindowTitle(f'نظام التسجيل - مرحباً {USER_DB[self.user_id]["name"]}')
+        self.setGeometry(100, 100, 1200, 700) 
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.registered_sections_data = [] 
+        self.is_dark_mode = False 
+        
+        # مجموعة أزرار لضمان اختيار واحد فقط
+        self.section_button_group = QButtonGroup()
+        
+        self.init_ui()
+        self.load_schedule_and_courses()
+
+    def init_ui(self):
+        window_layout = QVBoxLayout(self) 
+        window_layout.setContentsMargins(15, 15, 15, 15)
+        
+        top_bar_layout = QHBoxLayout()
+        top_bar_layout.setContentsMargins(0, 0, 0, 10) 
+        self.theme_button = QPushButton("🌙")
+        self.theme_button.setProperty("class", "theme_button")
+        self.theme_button.clicked.connect(self.toggle_theme)
+        top_bar_layout.addWidget(self.theme_button)
+        top_bar_layout.addStretch()
+        window_layout.addLayout(top_bar_layout)
+        
+        main_layout = QHBoxLayout() 
+        main_layout.setSpacing(15)
+        window_layout.addLayout(main_layout) 
+
+        # --- 1. البطاقة اليمنى: المواد المتاحة ---
+        available_frame = QFrame()
+        available_frame.setProperty("class", "card")
+        apply_shadow(available_frame)
+        available_layout = QVBoxLayout(available_frame)
+        
+        user_data = USER_DB[self.user_id]
+        info_label = QLabel(f"الطالب: {user_data['name']}\nالبرنامج: {user_data['program']} - {user_data['level']}")
+        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        available_layout.addWidget(info_label)
+        available_layout.addWidget(QLabel('الخطوة 1: اختر مادة من هنا'))
+        
+        self.available_courses_list = QListWidget()
+        self.available_courses_list.currentItemChanged.connect(self.display_sections)
+        available_layout.addWidget(self.available_courses_list)
+
+        # --- 2. البطاقة الوسطى: شعب المادة المختارة ---
+        sections_frame = QFrame()
+        sections_frame.setProperty("class", "card")
+        apply_shadow(sections_frame)
+        sections_layout = QVBoxLayout(sections_frame)
+        
+        self.sections_label = QLabel('الخطوة 2: اختر شعبة واحدة ثم اضغط إضافة')
+        
+        sections_layout.addWidget(self.sections_label)
+        self.available_sections_table = QTableWidget()
+        
+        # إضافة عمود لزر الاختيار
+        self.available_sections_table.setColumnCount(7) # 6 + 1
+        self.available_sections_table.setHorizontalHeaderLabels(['اختيار', 'المدرس', 'الوقت', 'القاعة', 'السعة', 'المسجلين', 'ID'])
+        self.available_sections_table.setColumnHidden(6, True) # إخفاء ID في العمود 6
+        
+        # إلغاء تحديد الصف بالكامل
+        self.available_sections_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        
+        self.available_sections_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # جعل عمود الاختيار صغيراً
+        self.available_sections_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents) 
+
+        sections_layout.addWidget(self.available_sections_table)
+        self.add_button = QPushButton('إضافة الشعبة المحددة <--')
+        self.add_button.clicked.connect(self.add_section)
+        sections_layout.addWidget(self.add_button)
+
+        # --- 3. البطاقة اليسرى: جدولي المسجل ---
+        registered_frame = QFrame()
+        registered_frame.setProperty("class", "card")
+        apply_shadow(registered_frame)
+        registered_layout = QVBoxLayout(registered_frame)
+        registered_layout.addWidget(QLabel('جدولي الحالي (الشعب المسجلة)'))
+        self.registered_schedule_table = QTableWidget()
+        self.registered_schedule_table.setColumnCount(6)
+        self.registered_schedule_table.setHorizontalHeaderLabels(['المادة', 'المدرس', 'الوقت', 'القاعة', 'الساعات', 'ID'])
+        self.registered_schedule_table.setColumnHidden(5, True)
+        self.registered_schedule_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # تفعيل تحديد الصفوف هنا للحذف
+        self.registered_schedule_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.registered_schedule_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        
+        registered_layout.addWidget(self.registered_schedule_table)
+        
+        hours_layout = QHBoxLayout()
+        hours_font = QFont("Arial", 10, QFont.Weight.Bold)
+        self.passed_hours_label = QLabel("الساعات المجتازة: 0")
+        self.passed_hours_label.setFont(hours_font)
+        self.registered_hours_label = QLabel("ساعات المسجلة: 0")
+        self.registered_hours_label.setFont(hours_font)
+        self.registered_hours_label.setStyleSheet("color: blue;")
+        self.total_hours_label = QLabel("الإجمالي: 0")
+        self.total_hours_label.setFont(hours_font)
+        self.total_hours_label.setStyleSheet("color: green;")
+        hours_layout.addWidget(self.passed_hours_label)
+        hours_layout.addWidget(self.registered_hours_label)
+        hours_layout.addWidget(self.total_hours_label)
+        registered_layout.addLayout(hours_layout)
+        
+        buttons_layout = QHBoxLayout()
+        self.remove_button = QPushButton('--> حذف الشعبة المحددة')
+        self.remove_button.setProperty("class", "danger") 
+        self.remove_button.clicked.connect(self.remove_section)
+        
+        self.show_transcript_button = QPushButton('عرض السجل الأكاديمي')
+        self.show_transcript_button.setProperty("class", "secondary") 
+        self.show_transcript_button.clicked.connect(self.open_transcript_window)
+        
+        self.show_schedule_button = QPushButton('عرض الجدول الكامل (طباعة)')
+        self.show_schedule_button.setProperty("class", "secondary") 
+        self.show_schedule_button.clicked.connect(self.open_schedule_window)
+        
+        buttons_layout.addWidget(self.remove_button)
+        buttons_layout.addWidget(self.show_transcript_button) 
+        registered_layout.addLayout(buttons_layout)
+        registered_layout.addWidget(self.show_schedule_button) 
+        
+        self.status_bar = QStatusBar()
+        self.status_bar.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        registered_layout.addWidget(self.status_bar)
+        
+        main_layout.addWidget(available_frame, 1) 
+        main_layout.addWidget(sections_frame, 2)  
+        main_layout.addWidget(registered_frame, 2) 
+
+    def toggle_theme(self):
+        app = QApplication.instance()
+        self.is_dark_mode = not self.is_dark_mode
+        if self.is_dark_mode:
+            app.setStyleSheet(DARK_MODE_QSS)
+            self.theme_button.setText("☀️")
+        else:
+            app.setStyleSheet(LIGHT_MODE_QSS)
+            self.theme_button.setText("🌙")
+
+    def calculate_registered_hours(self):
+        total_hours = 0
+        for section_data in self.registered_sections_data:
+            total_hours += section_data['credit_hours']
+        return total_hours
+
+    def calculate_passed_hours_from_db(self):
+        transcript_list = USER_DB[self.user_id].get('transcript', [])
+        return calculate_passed_hours(transcript_list)
+
+    def load_schedule_and_courses(self):
+        self.available_courses_list.clear()
+        self.available_sections_table.setRowCount(0)
+        self.registered_schedule_table.setRowCount(0)
+        self.registered_sections_data.clear()
+        self.sections_label.setText('الخطوة 2: اختر شعبة من الجدول')
+        
+        registered_schedule = USER_DB[self.user_id].get('schedule', [])
+        registered_section_ids = [item['id'] for item in registered_schedule]
+        
+        registered_course_codes = set()
+        current_registered_hours = 0
+        
+        passed_hours = self.calculate_passed_hours_from_db()
+        
+        self.registered_schedule_table.setRowCount(len(registered_section_ids))
+        for row, section_id in enumerate(registered_section_ids):
+            data = get_section_data(section_id)
+            if data:
+                self.registered_sections_data.append(data)
+                
+                registered_course_codes.add(data['course_code'])
+                hours = data['credit_hours']
+                current_registered_hours += hours
+                self.registered_schedule_table.setItem(row, 0, QTableWidgetItem(data['course_name']))
+                self.registered_schedule_table.setItem(row, 1, QTableWidgetItem(data['instructor']))
+                self.registered_schedule_table.setItem(row, 2, QTableWidgetItem(f"{data['start']}:00 - {data['end']}:00"))
+                self.registered_schedule_table.setItem(row, 3, QTableWidgetItem(data['hall']))
+                self.registered_schedule_table.setItem(row, 4, QTableWidgetItem(str(hours)))
+                self.registered_schedule_table.setItem(row, 5, QTableWidgetItem(section_id)) 
+        
+        for course_code, course_info in MOCK_COURSES.items():
+            hours = course_info['credit_hours']
+            display_text = f"{course_code}: {course_info['name']} ({hours} ساعات)"
+            item = QListWidgetItem(display_text)
+            item.setData(Qt.ItemDataRole.UserRole, course_code)
+            
+            if course_code in registered_course_codes:
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                item.setForeground(Qt.GlobalColor.gray)
+                
+            self.available_courses_list.addItem(item)
+            
+        self.passed_hours_label.setText(f"الساعات المجتازة: {passed_hours}")
+        self.registered_hours_label.setText(f"ساعات المسجلة: {current_registered_hours}")
+        self.total_hours_label.setText(f"الإجمالي: {passed_hours + current_registered_hours}")
+        
+    @pyqtSlot(QListWidgetItem)
+    def display_sections(self, current_item):
+        # إعادة تعيين مجموعة الأزرار
+        self.section_button_group = QButtonGroup()
+        
+        if not current_item or not (current_item.flags() & Qt.ItemFlag.ItemIsEnabled):
+            self.available_sections_table.setRowCount(0)
+            self.sections_label.setText('الخطوة 2: اختر شعبة من الجدول')
+            return
+            
+        course_id = current_item.data(Qt.ItemDataRole.UserRole)
+        course_info = MOCK_COURSES[course_id]
+        sections = course_info['sections']
+        self.sections_label.setText(f"الخطوة 2: اختر شعبة لـ ({course_info['name']} - {course_info['credit_hours']} ساعات)")
+        
+        self.available_sections_table.setRowCount(len(sections))
+        for row, section in enumerate(sections):
+            
+            # إضافة زر الاختيار
+            radio_button = QRadioButton()
+            radio_button.setProperty("section_id", section['id'])
+            
+            # (توسيط الزر في الخلية)
+            cell_widget = QWidget()
+            cell_layout = QHBoxLayout(cell_widget)
+            cell_layout.addWidget(radio_button)
+            cell_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            cell_layout.setContentsMargins(0, 0, 0, 0)
+            
+            self.available_sections_table.setCellWidget(row, 0, cell_widget)
+            self.section_button_group.addButton(radio_button)
+            
+            # تغيير رقم العمود + 1
+            self.available_sections_table.setItem(row, 1, QTableWidgetItem(section['instructor']))
+            self.available_sections_table.setItem(row, 2, QTableWidgetItem(f"{section['start']}:00 - {section['end']}:00"))
+            self.available_sections_table.setItem(row, 3, QTableWidgetItem(section['hall']))
+            
+            self.available_sections_table.setItem(row, 4, QTableWidgetItem(str(section['max_capacity'])))
+            enrollment_item = QTableWidgetItem(str(section['current_enrollment']))
+            
+            if section['current_enrollment'] >= section['max_capacity']:
+                enrollment_item.setForeground(QColor('red'))
+                enrollment_item.setFont(QFont("Arial", 9, QFont.Weight.Bold))
+                radio_button.setEnabled(False) # تعطيل الزر إذا كانت الشعبة ممتلئة
+                
+            self.available_sections_table.setItem(row, 5, enrollment_item)
+            self.available_sections_table.setItem(row, 6, QTableWidgetItem(section['id']))
+            
+    def add_section(self):
+        
+        # قراءة الاختيار من زر الراديو
+        checked_button = self.section_button_group.checkedButton()
+        
+        if not checked_button:
+            QMessageBox.warning(self, 'خطأ', 'الرجاء اختيار شعبة من الجدول الأوسط أولاً بالنقر على الدائرة')
+            return
+            
+        chosen_section_id = checked_button.property("section_id")
+        
+        new_section_data = get_section_data(chosen_section_id)
+        if not new_section_data: return
+
+        # --- (باقي كود التحقق كما هو) ---
+        user_data = USER_DB[self.user_id]
+        user_transcript = user_data['transcript']
+        user_program_plans = PROGRAM_PLANS[user_data['program']][user_data['level']]
+        current_registered_hours = self.calculate_registered_hours()
+        
+        course_code = new_section_data['course_code']
+        course_name = new_section_data['course_name']
+        course_credits = new_section_data['credit_hours']
+
+        # 2. التحقق من المتطلبات المسبقة
+        prereqs = new_section_data['prerequisites']
+        missing_prereqs = []
+        for prereq_code in prereqs:
+            if prereq_code not in user_transcript:
+                missing_prereqs.append(prereq_code)
+                
+        if missing_prereqs:
+            QMessageBox.critical(self, 'خطأ: متطلب مسبق غير مكتمل',
+                f"لا يمكن تسجيل '{course_name}'.\n"
+                f"المتطلبات المسبقة الناقصة: {', '.join(missing_prereqs)}")
+            return
+
+        # 3. التحقق من خطة البرنامج
+        if course_code not in user_program_plans:
+            reply = QMessageBox.warning(self, 'تحذير: المادة خارج الخطة',
+                f"المادة '{course_name}' ليست جزءاً من خطتك الدراسية الحالية.\n"
+                "هل أنت متأكد أنك تريد إضافتها (قد لا تُحتسب)؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.No:
+                return
+
+        # 4. التحقق من سعة الشعبة (تم التحقق منه بتعطيل الزر، لكن نتحقق مرة أخرى للأمان)
+        if new_section_data['current_enrollment'] >= new_section_data['max_capacity']:
+            QMessageBox.critical(self, 'خطأ: الشعبة ممتلئة',
+                f"لا يمكن التسجيل في شعبة '{course_name}' (المدرس: {new_section_data['instructor']}).\n"
+                "الشعبة ممتلئة.")
+            return
+
+        # 5. التحقق من الحد الأقصى للساعات
+        if (current_registered_hours + course_credits) > CREDIT_LIMITS['max']:
+            QMessageBox.critical(self, 'خطأ: تجاوز الحد الأقصى للساعات',
+                f"لا يمكن إضافة '{course_name}' ({course_credits} ساعات).\n"
+                f"الحد الأقصى المسموح به هو {CREDIT_LIMITS['max']} ساعة، وإضافتها ستجعل إجمالي ساعاتك {current_registered_hours + course_credits} ساعة.")
+            return
+
+        # 6. التحقق من تعارض الوقت
+        new_start = new_section_data['start']
+        new_end = new_section_data['end']
+        for reg_section in self.registered_sections_data:
+            reg_start = reg_section['start']
+            reg_end = reg_section['end']
+            if (new_start < reg_end) and (new_end > reg_start):
+                QMessageBox.critical(self, 'خطأ: تعارض في الجدول',
+                    f"لا يمكن إضافة: '{new_section_data['course_name']}'\n"
+                    f"تتعارض مع: '{reg_section['course_name']}' (شعبة {reg_section['instructor']})")
+                return 
+
+        # 7. إذا نجح كل شيء: قم بالإضافة
+        from datetime import datetime
+        current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        USER_DB[self.user_id]['schedule'].append({
+            'id': chosen_section_id,
+            'registration_time': current_time_str
+        })
+        
+        for section in MOCK_COURSES[course_code]['sections']:
+            if section['id'] == chosen_section_id:
+                section['current_enrollment'] += 1
+                break
+        
+        self.load_schedule_and_courses()
+        self.status_bar.showMessage(f"✅ تمت إضافة: {new_section_data['course_name']} | في: {current_time_str}", 4000)
+
+    def remove_section(self):
+        # التأكد من تحديد صف الحذف
+        selected_row_index = self.registered_schedule_table.currentRow()
+        if selected_row_index == -1:
+            QMessageBox.warning(self, 'خطأ', 'الرجاء اختيار شعبة من (جدولي) لحذفها')
+            return
+            
+        section_id_to_remove = self.registered_schedule_table.item(selected_row_index, 5).text()
+        section_data = get_section_data(section_id_to_remove)
+        course_credits = section_data['credit_hours']
+        course_code = section_data['course_code']
+        current_registered_hours = self.calculate_registered_hours()
+
+        if (current_registered_hours - course_credits) < CREDIT_LIMITS['min']:
+            reply = QMessageBox.warning(self, 'تحذير: أقل من الحد الأدنى',
+                f"حذف مادة '{section_data['course_name']}' سيجعل مجموع ساعاتك {current_registered_hours - course_credits} ساعة.\n"
+                f"وهذا أقل من الحد الأدنى ({CREDIT_LIMITS['min']} ساعة).\nهل تريد المتابعة على أي حال؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.No:
+                return
+
+        schedule_list = USER_DB[self.user_id]['schedule']
+        item_to_remove = None
+        for item in schedule_list:
+            if item['id'] == section_id_to_remove:
+                item_to_remove = item
+                break
+        
+        if item_to_remove:
+            schedule_list.remove(item_to_remove)
+            
+            for section in MOCK_COURSES[course_code]['sections']:
+                if section['id'] == section_id_to_remove:
+                    section['current_enrollment'] -= 1
+                    break
+                    
+            self.load_schedule_and_courses()
+            self.status_bar.showMessage(f"تم حذف: {section_data['course_name']} بنجاح", 3000)
+            
+    def open_schedule_window(self):
+        schedule_dialog = ScheduleWindow(self.user_id, self)
+        schedule_dialog.exec()
+
+    def open_transcript_window(self):
+        transcript_dialog = TranscriptWindow(self.user_id, self)
+        transcript_dialog.exec()
+
+# --- نافذة لوحة تحكم الدكتور (محدثة) ---
+class DoctorDashboard(QWidget):
+    def __init__(self, user_id):
+        super().__init__()
+        self.user_id = user_id
+        self.setWindowTitle(f'لوحة تحكم المنسق - د. {USER_DB[self.user_id]["name"]}')
+        self.setGeometry(100, 100, 1000, 600)
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.current_course_id = None
+        self.current_section_index = -1
+        self.is_dark_mode = False 
+        self.init_ui()
+
+    def init_ui(self):
+        window_layout = QVBoxLayout(self)
+        window_layout.setContentsMargins(15, 15, 15, 15)
+        
+        top_bar_layout = QHBoxLayout()
+        top_bar_layout.setContentsMargins(0, 0, 0, 10)
+        self.theme_button = QPushButton("🌙")
+        self.theme_button.setProperty("class", "theme_button")
+        self.theme_button.clicked.connect(self.toggle_theme)
+        top_bar_layout.addWidget(self.theme_button)
+        top_bar_layout.addStretch()
+        window_layout.addLayout(top_bar_layout)
+
+        main_layout = QHBoxLayout() 
+        main_layout.setSpacing(15)
+        window_layout.addLayout(main_layout)
+        
+        left_frame = QFrame()
+        left_frame.setProperty("class", "card")
+        apply_shadow(left_frame)
+        left_layout = QVBoxLayout(left_frame)
+        left_layout.addWidget(QLabel('الخطوة 1: اختر المادة للتعديل'))
+        self.course_combo = QComboBox()
+        self.course_combo.addItem("--- اختر مادة ---", None)
+        for course_id, info in MOCK_COURSES.items():
+            self.course_combo.addItem(f"{course_id}: {info['name']}", course_id)
+        self.course_combo.currentIndexChanged.connect(self.load_sections)
+        left_layout.addWidget(self.course_combo)
+        left_layout.addWidget(QLabel('الخطوة 2: اختر شعبة من الجدول'))
+        self.sections_table = QTableWidget()
+        
+        self.sections_table.setColumnCount(7)
+        self.sections_table.setHorizontalHeaderLabels(['ID', 'المدرس', 'البدء', 'الانتهاء', 'القاعة', 'السعة', 'المسجلين'])
+        
+        self.sections_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.sections_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.sections_table.itemSelectionChanged.connect(self.load_section_details)
+        left_layout.addWidget(self.sections_table)
+
+        right_frame = QFrame()
+        right_frame.setProperty("class", "card")
+        apply_shadow(right_frame)
+        right_layout = QVBoxLayout(right_frame)
+        right_layout.addWidget(QLabel('الخطوة 3: قم بالتعديل ثم احفظ'))
+        self.edit_form = QFormLayout()
+        self.instructor_input = QLineEdit()
+        self.start_time_input = QLineEdit()
+        self.end_time_input = QLineEdit()
+        self.hall_input = QLineEdit()
+        self.capacity_input = QLineEdit()
+        
+        self.edit_form.addRow('اسم المدرس:', self.instructor_input)
+        self.edit_form.addRow('وقت البدء (رقم):', self.start_time_input)
+        self.edit_form.addRow('وقت الانتهاء (رقم):', self.end_time_input)
+        self.edit_form.addRow('القاعة:', self.hall_input)
+        self.edit_form.addRow('السعة القصوى:', self.capacity_input) 
+        
+        right_layout.addLayout(self.edit_form)
+        self.save_button = QPushButton('حفظ التعديلات')
+        self.save_button.clicked.connect(self.save_changes)
+        right_layout.addWidget(self.save_button)
+        right_layout.addStretch() 
+
+        main_layout.addWidget(left_frame, 2)
+        main_layout.addWidget(right_frame, 1)
+
+    def toggle_theme(self):
+        app = QApplication.instance()
+        self.is_dark_mode = not self.is_dark_mode
+        if self.is_dark_mode:
+            app.setStyleSheet(DARK_MODE_QSS)
+            self.theme_button.setText("☀️")
+        else:
+            app.setStyleSheet(LIGHT_MODE_QSS)
+            self.theme_button.setText("🌙")
+
+    def load_sections(self):
+        self.current_course_id = self.course_combo.currentData()
+        self.sections_table.setRowCount(0)
+        self.clear_form()
+        if not self.current_course_id:
+            return
+            
+        sections = MOCK_COURSES[self.current_course_id]['sections']
+        self.sections_table.setRowCount(len(sections))
+        for row, section in enumerate(sections):
+            self.sections_table.setItem(row, 0, QTableWidgetItem(section['id']))
+            self.sections_table.setItem(row, 1, QTableWidgetItem(section['instructor']))
+            self.sections_table.setItem(row, 2, QTableWidgetItem(str(section['start'])))
+            self.sections_table.setItem(row, 3, QTableWidgetItem(str(section['end'])))
+            self.sections_table.setItem(row, 4, QTableWidgetItem(section['hall']))
+            self.sections_table.setItem(row, 5, QTableWidgetItem(str(section['max_capacity'])))
+            self.sections_table.setItem(row, 6, QTableWidgetItem(str(section['current_enrollment'])))
+            
+    def load_section_details(self):
+        selected_row = self.sections_table.currentRow()
+        if selected_row == -1 or not self.current_course_id:
+            self.clear_form()
+            return
+            
+        self.current_section_index = selected_row
+        instructor = self.sections_table.item(selected_row, 1).text()
+        start = self.sections_table.item(selected_row, 2).text()
+        end = self.sections_table.item(selected_row, 3).text()
+        hall = self.sections_table.item(selected_row, 4).text()
+        capacity = self.sections_table.item(selected_row, 5).text() 
+        
+        self.instructor_input.setText(instructor)
+        self.start_time_input.setText(start)
+        self.end_time_input.setText(end)
+        self.hall_input.setText(hall)
+        self.capacity_input.setText(capacity) 
+
+    def save_changes(self):
+        if self.current_course_id is None or self.current_section_index == -1:
+            QMessageBox.warning(self, 'خطأ', 'الرجاء اختيار مادة وشعبة أولاً')
+            return
+            
+        try:
+            new_instructor = self.instructor_input.text()
+            new_start = int(self.start_time_input.text())
+            new_end = int(self.end_time_input.text())
+            new_hall = self.hall_input.text()
+            new_capacity = int(self.capacity_input.text()) 
+            
+            if not new_instructor or not new_hall:
+                raise ValueError("الخانات لا يمكن أن تكون فارغة")
+            
+            section_ref = MOCK_COURSES[self.current_course_id]['sections'][self.current_section_index]
+            section_ref['instructor'] = new_instructor
+            section_ref['start'] = new_start
+            section_ref['end'] = new_end
+            section_ref['hall'] = new_hall
+            section_ref['max_capacity'] = new_capacity 
+            
+            QMessageBox.information(self, 'نجاح', 'تم حفظ التعديلات بنجاح')
+            self.load_sections()
+            
+        except ValueError as e:
+            QMessageBox.critical(self, 'خطأ في الإدخال', f'الرجاء التأكد من إدخال أرقام صحيحة للأوقات والسعة.\n{e}')
+        except Exception as e:
+            QMessageBox.critical(self, 'خطأ', f'حدث خطأ غير متوقع: {e}')
+
+    def clear_form(self):
+        self.current_section_index = -1
+        self.instructor_input.clear()
+        self.start_time_input.clear()
+        self.end_time_input.clear()
+        self.hall_input.clear()
+        self.capacity_input.clear() 
+
+# --- (الجزء الخاص بتشغيل التطبيق) ---
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    
+    app.setStyleSheet(LIGHT_MODE_QSS)
+    
+    login_window = LoginWindow()
+    result = login_window.exec()
+
+    if result == QDialog.DialogCode.Accepted:
+        current_user = login_window.current_user_id 
+        current_role = login_window.current_user_role
+        
+        is_dark = login_window.is_dark_mode
+        
+        if current_role == 'student':
+            main_app_window = RegistrationApp(current_user) 
+            main_app_window.is_dark_mode = is_dark 
+            if is_dark: 
+                main_app_window.theme_button.setText("☀️")
+            main_app_window.show()
+        elif current_role == 'doctor':
+            doctor_window = DoctorDashboard(current_user)
+            doctor_window.is_dark_mode = is_dark 
+            if is_dark: 
+                doctor_window.theme_button.setText("☀️")
+            doctor_window.show()
+            
+        sys.exit(app.exec())
+    else:
+        sys.exit(0)
