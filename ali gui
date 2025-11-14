@@ -5,16 +5,15 @@ from PyQt6.QtWidgets import (
     QPushButton, QListWidget, QListWidgetItem, QLabel, QFrame,
     QMessageBox, QDialog, QLineEdit, QFormLayout,
     QTableWidget, QTableWidgetItem, QHeaderView,
-    QComboBox, 
+    QComboBox, QTabWidget, # <-- إضافة التبويبات
     QGraphicsDropShadowEffect,
     QStatusBar,
-    # (تمت إضافة أزرار الراديو ومجموعة الأزرار)
     QRadioButton, QButtonGroup
 )
 from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QFont, QColor
 
-# --- (الأنماط - محدثة بستايل زر الراديو) ---
+# --- (الأنماط - Styles) ---
 
 LIGHT_MODE_QSS = """
 QDialog, QWidget { background-color: #f0f2f5; font-family: "Arial", sans-serif; color: #333; }
@@ -36,6 +35,8 @@ QPushButton[class="secondary"] { background-color: #6c757d; }
 QPushButton[class="secondary"]:hover { background-color: #5a6268; }
 QPushButton[class="danger"] { background-color: #dc3545; }
 QPushButton[class="danger"]:hover { background-color: #c82333; }
+QPushButton[class="success"] { background-color: #28a745; }
+QPushButton[class="success"]:hover { background-color: #218838; }
 QTableWidget {
     background-color: #ffffff; border: 1px solid #d0d0d0;
     border-radius: 5px; font-size: 13px;
@@ -63,32 +64,38 @@ QPushButton[class="theme_button"] {
     border-radius: 15px; /* دائري */
 }
 QPushButton[class="theme_button"]:hover { background-color: #d0d0d0; }
-
-/* --- (جديد: تعديل زر الاختيار للوضع الفاتح) --- */
+QPushButton[class="logout_button"] {
+    background-color: #c82333;
+    font-size: 12px;
+    padding: 5px 10px;
+    min-width: 80px;
+    max-height: 25px;
+}
 QRadioButton::indicator {
     width: 16px;
     height: 16px;
-    border-radius: 9px; /* دائري */
+    border-radius: 9px; 
     border: 2px solid #999;
     background-color: #f0f0f0;
 }
 QRadioButton::indicator:hover {
-    border: 2px solid #007bff; /* إطار أزرق عند التأشير */
+    border: 2px solid #007bff; 
 }
 QRadioButton::indicator:checked {
-    border: 2px solid #007bff; /* إطار أزرق عند الاختيار */
-    /* إنشاء نقطة زرقاء في المنتصف */
+    border: 2px solid #007bff; 
     background-color: qradialgradient(
         cx:0.5, cy:0.5, radius: 0.5, fx:0.5, fy:0.5, 
-        stop:0.4 #007bff,  /* النقطة الزرقاء */
-        stop:0.5 #f0f0f0   /* الخلفية البيضاء حولها */
+        stop:0.4 #007bff, 
+        stop:0.5 #f0f0f0  
     );
 }
 QRadioButton::indicator:disabled {
     border: 2px solid #ccc;
     background-color: #f9f9f9;
 }
-/* --- (نهاية التعديل) --- */
+QTabWidget::pane { border: 1px solid #d0d0d0; border-radius: 5px; background: white; }
+QTabBar::tab { background: #e0e0e0; padding: 10px 20px; border-top-left-radius: 5px; border-top-right-radius: 5px; margin-right: 2px; }
+QTabBar::tab:selected { background: #007bff; color: white; }
 """
 
 DARK_MODE_QSS = """
@@ -111,6 +118,8 @@ QPushButton[class="secondary"] { background-color: #6c757d; }
 QPushButton[class="secondary"]:hover { background-color: #5a6268; }
 QPushButton[class="danger"] { background-color: #dc3545; }
 QPushButton[class="danger"]:hover { background-color: #c82333; }
+QPushButton[class="success"] { background-color: #28a745; }
+QPushButton[class="success"]:hover { background-color: #218838; }
 QTableWidget {
     background-color: #3c3c3c; border: 1px solid #555;
     border-radius: 5px; font-size: 13px;
@@ -138,50 +147,65 @@ QPushButton[class="theme_button"] {
     border-radius: 15px; /* دائري */
 }
 QPushButton[class="theme_button"]:hover { background-color: #666; }
-
-/* --- (جديد: تعديل زر الاختيار للوضع الداكن) --- */
+QPushButton[class="logout_button"] {
+    background-color: #c82333;
+    font-size: 12px;
+    padding: 5px 10px;
+    min-width: 80px;
+    max-height: 25px;
+}
 QRadioButton::indicator {
     width: 16px;
     height: 16px;
-    border-radius: 9px; /* دائري */
+    border-radius: 9px; 
     border: 2px solid #777;
     background-color: #444;
 }
 QRadioButton::indicator:hover {
-    border: 2px solid #007bff; /* إطار أزرق عند التأشير */
+    border: 2px solid #007bff; 
 }
 QRadioButton::indicator:checked {
-    border: 2px solid #007bff; /* إطار أزرق عند الاختيار */
-    /* إنشاء نقطة زرقاء في المنتصف */
+    border: 2px solid #007bff; 
     background-color: qradialgradient(
         cx:0.5, cy:0.5, radius: 0.5, fx:0.5, fy:0.5, 
-        stop:0.4 #007bff,  /* النقطة الزرقاء */
-        stop:0.5 #444      /* الخلفية الداكنة حولها */
+        stop:0.4 #007bff, 
+        stop:0.5 #444 
     );
 }
 QRadioButton::indicator:disabled {
     border: 2px solid #555;
     background-color: #333;
 }
-/* --- (نهاية التعديل) --- */
+QTabWidget::pane { border: 1px solid #555; border-radius: 5px; background: #3c3c3c; }
+QTabBar::tab { background: #444; padding: 10px 20px; border-top-left-radius: 5px; border-top-right-radius: 5px; margin-right: 2px; color: #f0f0f0; }
+QTabBar::tab:selected { background: #007bff; color: white; }
 """
 
-# --- (قاعدة بيانات وهمية) ---
-USER_DB = {}
+# --- (قاعدة البيانات - إضافة حساب رئيس القسم) ---
+USER_DB = {
+    # حساب رئيس القسم الافتراضي
+    'admin': {
+        'password': 'admin', 
+        'name': 'رئيس القسم', 
+        'role': 'hod', # دور جديد: Head of Department
+        'email': 'hod@university.edu',
+        'mobile': '0000000000'
+    }
+}
 
-# --- (قاعدة بيانات المواد المحدثة) ---
+# --- (قاعدة بيانات المواد) ---
 MOCK_COURSES = {
     'CS101': {
         'name': 'مقدمة البرمجة', 'credit_hours': 3,
-        'prerequisites': [], # لا متطلبات
+        'prerequisites': [],
         'sections': [
             {'id': 'CS101_1', 'start': 9, 'end': 10, 'instructor': 'د. أحمد عبدالله', 'hall': '101-ب', 'max_capacity': 50, 'current_enrollment': 45},
-            {'id': 'CS101_2', 'start': 11, 'end': 12, 'instructor': 'د. خالد الغامدي', 'hall': '102-ب', 'max_capacity': 50, 'current_enrollment': 50}, # ممتلئة
+            {'id': 'CS101_2', 'start': 11, 'end': 12, 'instructor': 'د. خالد الغامدي', 'hall': '102-ب', 'max_capacity': 50, 'current_enrollment': 50},
         ]
     },
     'MATH201': {
         'name': 'مادة الرياضيات', 'credit_hours': 3,
-        'prerequisites': [], # لا متطلبات
+        'prerequisites': [],
         'sections': [
             {'id': 'MATH201_1', 'start': 9, 'end': 10, 'instructor': 'أ. فهد', 'hall': '201-ج', 'max_capacity': 40, 'current_enrollment': 30},
             {'id': 'MATH201_2', 'start': 10, 'end': 11, 'instructor': 'أ. رامي', 'hall': '202-ج', 'max_capacity': 40, 'current_enrollment': 38},
@@ -189,7 +213,7 @@ MOCK_COURSES = {
     },
     'CIRC210': {
         'name': 'الدوائر الكهربائية', 'credit_hours': 3,
-        'prerequisites': ['MATH201'], # متطلب: رياضيات
+        'prerequisites': ['MATH201'],
         'sections': [
             {'id': 'CIRC210_1', 'start': 10, 'end': 11, 'instructor': 'د. عمر خالد', 'hall': '301-أ', 'max_capacity': 30, 'current_enrollment': 25},
             {'id': 'CIRC210_2', 'start': 11, 'end': 12, 'instructor': 'د. مروان', 'hall': '302-أ', 'max_capacity': 30, 'current_enrollment': 29},
@@ -205,22 +229,21 @@ MOCK_COURSES = {
     },
     'MATH301': {
         'name': 'كومبلكس', 'credit_hours': 3,
-        'prerequisites': ['MATH201'], # متطلب: رياضيات
+        'prerequisites': ['MATH201'],
         'sections': [
-            {'id': 'MATH301_1', 'start': 9, 'end': 10, 'instructor': 'د. برهان', 'hall': '401-أ', 'max_capacity': 40, 'current_enrollment': 40}, # ممتلئة
+            {'id': 'MATH301_1', 'start': 9, 'end': 10, 'instructor': 'د. برهان', 'hall': '401-أ', 'max_capacity': 40, 'current_enrollment': 40},
             {'id': 'MATH301_2', 'start': 11, 'end': 12, 'instructor': 'د. عاطف', 'hall': '402-أ', 'max_capacity': 40, 'current_enrollment': 35},
         ]
     },
     'COMM310': {
         'name': 'مبادئ الاتصالات', 'credit_hours': 3,
-        'prerequisites': ['CIRC210'], # متطلب: دوائر
+        'prerequisites': ['CIRC210'],
         'sections': [
             {'id': 'COMM310_1', 'start': 13, 'end': 14, 'instructor': 'د. سامي', 'hall': '501-أ', 'max_capacity': 30, 'current_enrollment': 10},
         ]
     }
 }
 
-# --- (خطط البرامج وحدود الساعات) ---
 PROGRAM_PLANS = {
     'Computer': {
         'Level 1': ['CS101', 'MATH201', 'ENGR101'],
@@ -240,10 +263,7 @@ PROGRAM_PLANS = {
     }
 }
 
-CREDIT_LIMITS = {
-    'min': 12,
-    'max': 18
-}
+CREDIT_LIMITS = {'min': 12, 'max': 18}
 
 # --- (دوال مساعدة) ---
 def apply_shadow(widget):
@@ -272,7 +292,7 @@ def calculate_passed_hours(transcript_list):
             total_hours += MOCK_COURSES[course_code]['credit_hours']
     return total_hours
 
-# --- نافذة إنشاء الحساب (محدثة) ---
+# --- نافذة إنشاء الحساب (كما هي) ---
 class RegisterWindow(QDialog):
     def __init__(self, role='student', parent=None):
         super().__init__(parent)
@@ -340,7 +360,6 @@ class RegisterWindow(QDialog):
         if self.role == 'student':
             program = self.program_combo.currentText()
             level = self.level_combo.currentText()
-            
             if level == 'Level 2':
                 mock_transcript = PROGRAM_PLANS[program]['Level 1']
             else:
@@ -353,10 +372,7 @@ class RegisterWindow(QDialog):
             USER_DB[new_academic_id] = {
                 'password': new_password, 'name': name, 'email': email,
                 'mobile': mobile, 'role': 'student',
-                'program': program, 
-                'level': level,     
-                'transcript': mock_transcript, 
-                'schedule': [] 
+                'program': program, 'level': level, 'transcript': mock_transcript, 'schedule': [] 
             }
             passed_hours = calculate_passed_hours(mock_transcript)
             msg = (f"المعرف الجامعي: {new_academic_id}\nكلمة المرور: {new_password}\n"
@@ -471,13 +487,14 @@ class LoginWindow(QDialog):
         register_dialog = RegisterWindow(role='doctor', parent=self)
         register_dialog.exec()
 
-# --- نافذة عرض الجدول ---
+# --- نوافذ مساعدة ---
 class ScheduleWindow(QDialog):
     def __init__(self, user_id, parent=None):
         super().__init__(parent)
         self.user_id = user_id
         student_name = USER_DB[self.user_id]["name"]
         self.setWindowTitle(f'الجدول الدراسي للطالب: {student_name}')
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMinMaxButtonsHint)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.setGeometry(150, 150, 800, 300)
         self.setModal(True) 
@@ -511,13 +528,13 @@ class ScheduleWindow(QDialog):
         total_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         self.table.setItem(len(registered_section_ids), 4, total_label)
 
-# --- نافذة عرض السجل الأكاديمي ---
 class TranscriptWindow(QDialog):
     def __init__(self, user_id, parent=None):
         super().__init__(parent)
         self.user_id = user_id
         student_name = USER_DB[self.user_id]["name"]
         self.setWindowTitle(f'السجل الأكاديمي للطالب: {student_name}')
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMinMaxButtonsHint)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.setGeometry(150, 150, 600, 400)
         self.setModal(True)
@@ -547,18 +564,359 @@ class TranscriptWindow(QDialog):
         total_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         self.table.setItem(len(transcript), 2, total_label)
 
-# --- نافذة تسجيل الطالب (محدثة بأزرار الراديو) ---
+# --- (جديد: واجهة رئيس القسم الشاملة) ---
+class HODDashboard(QWidget):
+    def __init__(self, user_id):
+        super().__init__()
+        self.user_id = user_id
+        self.setWindowTitle(f'لوحة تحكم رئيس القسم - {USER_DB[self.user_id]["name"]}')
+        self.setWindowFlags(Qt.WindowType.Window)
+        self.setGeometry(50, 50, 1200, 750)
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.is_dark_mode = False
+        self.logout_requested = False
+        
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QVBoxLayout(self)
+        
+        # الشريط العلوي
+        top_bar = QHBoxLayout()
+        self.theme_button = QPushButton("🌙")
+        self.theme_button.setProperty("class", "theme_button")
+        self.theme_button.clicked.connect(self.toggle_theme)
+        top_bar.addWidget(self.theme_button)
+        
+        self.logout_button = QPushButton("تسجيل خروج")
+        self.logout_button.setProperty("class", "logout_button")
+        self.logout_button.clicked.connect(self.handle_logout)
+        top_bar.addWidget(self.logout_button)
+        top_bar.addStretch()
+        main_layout.addLayout(top_bar)
+        
+        # نظام التبويبات
+        self.tabs = QTabWidget()
+        
+        # التبويب 1: إدارة المواد (إضافة/حذف مواد)
+        self.course_mgmt_tab = QWidget()
+        self.init_course_mgmt_tab()
+        self.tabs.addTab(self.course_mgmt_tab, "إدارة المواد (الخطط)")
+        
+        # التبويب 2: إدارة الجدول (إضافة/حذف شعب)
+        self.schedule_mgmt_tab = QWidget()
+        self.init_schedule_mgmt_tab()
+        self.tabs.addTab(self.schedule_mgmt_tab, "إدارة الجدول والشعب")
+        
+        main_layout.addWidget(self.tabs)
+
+    # --- مكونات تبويب إدارة المواد ---
+    def init_course_mgmt_tab(self):
+        layout = QHBoxLayout(self.course_mgmt_tab)
+        
+        # يمين: قائمة المواد الحالية
+        list_frame = QFrame()
+        list_frame.setProperty("class", "card")
+        apply_shadow(list_frame)
+        list_layout = QVBoxLayout(list_frame)
+        list_layout.addWidget(QLabel("المواد الموجودة بالنظام"))
+        self.courses_list_widget = QListWidget()
+        self.refresh_courses_list()
+        list_layout.addWidget(self.courses_list_widget)
+        self.del_course_btn = QPushButton("حذف المادة المحددة")
+        self.del_course_btn.setProperty("class", "danger")
+        self.del_course_btn.clicked.connect(self.delete_course)
+        list_layout.addWidget(self.del_course_btn)
+        
+        # يسار: نموذج إضافة مادة
+        form_frame = QFrame()
+        form_frame.setProperty("class", "card")
+        apply_shadow(form_frame)
+        form_layout = QVBoxLayout(form_frame)
+        form_layout.addWidget(QLabel("إضافة مادة جديدة"))
+        
+        self.new_course_form = QFormLayout()
+        self.nc_code = QLineEdit()
+        self.nc_name = QLineEdit()
+        self.nc_credits = QLineEdit()
+        self.nc_prereqs = QLineEdit()
+        self.nc_prereqs.setPlaceholderText("مثال: CS101,MATH201 (مفصول بفاصلة)")
+        
+        self.new_course_form.addRow("رمز المادة (ID):", self.nc_code)
+        self.new_course_form.addRow("اسم المادة:", self.nc_name)
+        self.new_course_form.addRow("الساعات:", self.nc_credits)
+        self.new_course_form.addRow("المتطلبات:", self.nc_prereqs)
+        
+        form_layout.addLayout(self.new_course_form)
+        self.add_course_btn = QPushButton("إضافة المادة")
+        self.add_course_btn.setProperty("class", "success")
+        self.add_course_btn.clicked.connect(self.add_course)
+        form_layout.addWidget(self.add_course_btn)
+        form_layout.addStretch()
+        
+        layout.addWidget(list_frame, 1)
+        layout.addWidget(form_frame, 1)
+
+    # --- مكونات تبويب إدارة الجدول ---
+    def init_schedule_mgmt_tab(self):
+        layout = QHBoxLayout(self.schedule_mgmt_tab)
+        
+        # يمين: اختيار المادة وعرض الشعب
+        left_frame = QFrame()
+        left_frame.setProperty("class", "card")
+        apply_shadow(left_frame)
+        l_layout = QVBoxLayout(left_frame)
+        l_layout.addWidget(QLabel("1. اختر المادة لعرض شعبها"))
+        self.sched_course_combo = QComboBox()
+        self.sched_course_combo.currentIndexChanged.connect(self.load_sections_for_mgmt)
+        l_layout.addWidget(self.sched_course_combo)
+        
+        self.sections_table = QTableWidget()
+        self.sections_table.setColumnCount(7)
+        self.sections_table.setHorizontalHeaderLabels(['ID', 'المدرس', 'البدء', 'الانتهاء', 'القاعة', 'السعة', 'المسجلين'])
+        self.sections_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.sections_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.sections_table.itemSelectionChanged.connect(self.load_section_to_edit)
+        l_layout.addWidget(self.sections_table)
+        
+        # أزرار التحكم بالشعب
+        btns_layout = QHBoxLayout()
+        self.btn_del_section = QPushButton("حذف الشعبة المحددة")
+        self.btn_del_section.setProperty("class", "danger")
+        self.btn_del_section.clicked.connect(self.delete_section)
+        btns_layout.addWidget(self.btn_del_section)
+        l_layout.addLayout(btns_layout)
+
+        # يسار: نموذج التعديل/الإضافة
+        right_frame = QFrame()
+        right_frame.setProperty("class", "card")
+        apply_shadow(right_frame)
+        r_layout = QVBoxLayout(right_frame)
+        r_layout.addWidget(QLabel("2. بيانات الشعبة (للإضافة أو التعديل)"))
+        
+        self.sec_form = QFormLayout()
+        self.sec_id_input = QLineEdit() # للشعب الجديدة فقط
+        self.sec_id_input.setPlaceholderText("مثال: CS101_3 (فارغ عند التعديل)")
+        self.sec_inst_input = QLineEdit()
+        self.sec_start_input = QLineEdit()
+        self.sec_end_input = QLineEdit()
+        self.sec_hall_input = QLineEdit()
+        self.sec_cap_input = QLineEdit()
+        
+        self.sec_form.addRow("ID الشعبة (للجديد):", self.sec_id_input)
+        self.sec_form.addRow("المدرس:", self.sec_inst_input)
+        self.sec_form.addRow("وقت البدء:", self.sec_start_input)
+        self.sec_form.addRow("وقت الانتهاء:", self.sec_end_input)
+        self.sec_form.addRow("القاعة:", self.sec_hall_input)
+        self.sec_form.addRow("السعة:", self.sec_cap_input)
+        
+        r_layout.addLayout(self.sec_form)
+        
+        self.btn_update_section = QPushButton("حفظ التعديلات (للمحدد)")
+        self.btn_update_section.clicked.connect(self.update_section)
+        r_layout.addWidget(self.btn_update_section)
+        
+        self.btn_add_section = QPushButton("إضافة كشعبة جديدة")
+        self.btn_add_section.setProperty("class", "success")
+        self.btn_add_section.clicked.connect(self.add_new_section)
+        r_layout.addWidget(self.btn_add_section)
+        
+        r_layout.addStretch()
+        
+        layout.addWidget(left_frame, 2)
+        layout.addWidget(right_frame, 1)
+        
+        # تعبئة الكومبو بوكس
+        self.refresh_schedule_combo()
+
+    # --- وظائف تبويب إدارة المواد ---
+    def refresh_courses_list(self):
+        self.courses_list_widget.clear()
+        for code, data in MOCK_COURSES.items():
+            self.courses_list_widget.addItem(f"{code}: {data['name']} ({data['credit_hours']} ساعات)")
+
+    def add_course(self):
+        code = self.nc_code.text().upper().strip()
+        name = self.nc_name.text().strip()
+        credits_str = self.nc_credits.text().strip()
+        prereqs_str = self.nc_prereqs.text().strip()
+        
+        if not code or not name or not credits_str:
+            QMessageBox.warning(self, "خطأ", "يرجى تعبئة الحقول الأساسية")
+            return
+        
+        if code in MOCK_COURSES:
+            QMessageBox.warning(self, "خطأ", "رمز المادة موجود مسبقاً")
+            return
+            
+        try:
+            credits_int = int(credits_str)
+            prereqs_list = [p.strip() for p in prereqs_str.split(',')] if prereqs_str else []
+            
+            MOCK_COURSES[code] = {
+                'name': name,
+                'credit_hours': credits_int,
+                'prerequisites': prereqs_list,
+                'sections': [] # قائمة شعب فارغة
+            }
+            QMessageBox.information(self, "نجاح", f"تم إضافة المادة {code} بنجاح")
+            self.refresh_courses_list()
+            self.refresh_schedule_combo()
+            
+            # مسح الحقول
+            self.nc_code.clear()
+            self.nc_name.clear()
+            self.nc_credits.clear()
+            self.nc_prereqs.clear()
+            
+        except ValueError:
+            QMessageBox.warning(self, "خطأ", "الساعات يجب أن تكون رقماً")
+
+    def delete_course(self):
+        item = self.courses_list_widget.currentItem()
+        if not item: return
+        code = item.text().split(':')[0]
+        
+        reply = QMessageBox.question(self, "تأكيد الحذف", f"هل أنت متأكد من حذف المادة {code} وجميع شعبها؟",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            del MOCK_COURSES[code]
+            self.refresh_courses_list()
+            self.refresh_schedule_combo()
+            QMessageBox.information(self, "تم", "تم حذف المادة")
+
+    # --- وظائف تبويب إدارة الجدول ---
+    def refresh_schedule_combo(self):
+        self.sched_course_combo.clear()
+        self.sched_course_combo.addItem("--- اختر مادة ---", None)
+        for code, data in MOCK_COURSES.items():
+            self.sched_course_combo.addItem(f"{code}: {data['name']}", code)
+
+    def load_sections_for_mgmt(self):
+        self.sections_table.setRowCount(0)
+        course_code = self.sched_course_combo.currentData()
+        if not course_code: return
+        
+        sections = MOCK_COURSES[course_code]['sections']
+        self.sections_table.setRowCount(len(sections))
+        for row, sec in enumerate(sections):
+            self.sections_table.setItem(row, 0, QTableWidgetItem(sec['id']))
+            self.sections_table.setItem(row, 1, QTableWidgetItem(sec['instructor']))
+            self.sections_table.setItem(row, 2, QTableWidgetItem(str(sec['start'])))
+            self.sections_table.setItem(row, 3, QTableWidgetItem(str(sec['end'])))
+            self.sections_table.setItem(row, 4, QTableWidgetItem(sec['hall']))
+            self.sections_table.setItem(row, 5, QTableWidgetItem(str(sec['max_capacity'])))
+            self.sections_table.setItem(row, 6, QTableWidgetItem(str(sec['current_enrollment'])))
+
+    def load_section_to_edit(self):
+        row = self.sections_table.currentRow()
+        if row == -1: return
+        self.sec_id_input.clear() # لا يمكن تغيير ID عند التعديل بسهولة، نتركه فارغ
+        self.sec_inst_input.setText(self.sections_table.item(row, 1).text())
+        self.sec_start_input.setText(self.sections_table.item(row, 2).text())
+        self.sec_end_input.setText(self.sections_table.item(row, 3).text())
+        self.sec_hall_input.setText(self.sections_table.item(row, 4).text())
+        self.sec_cap_input.setText(self.sections_table.item(row, 5).text())
+
+    def update_section(self):
+        course_code = self.sched_course_combo.currentData()
+        row = self.sections_table.currentRow()
+        if not course_code or row == -1:
+            QMessageBox.warning(self, "خطأ", "اختر شعبة للتعديل")
+            return
+        
+        try:
+            # تحديث البيانات في MOCK_COURSES
+            sec_ref = MOCK_COURSES[course_code]['sections'][row]
+            sec_ref['instructor'] = self.sec_inst_input.text()
+            sec_ref['start'] = int(self.sec_start_input.text())
+            sec_ref['end'] = int(self.sec_end_input.text())
+            sec_ref['hall'] = self.sec_hall_input.text()
+            sec_ref['max_capacity'] = int(self.sec_cap_input.text())
+            
+            QMessageBox.information(self, "نجاح", "تم تحديث بيانات الشعبة")
+            self.load_sections_for_mgmt()
+        except ValueError:
+            QMessageBox.warning(self, "خطأ", "تأكد من صحة الأرقام")
+
+    def add_new_section(self):
+        course_code = self.sched_course_combo.currentData()
+        if not course_code:
+            QMessageBox.warning(self, "خطأ", "اختر مادة أولاً")
+            return
+            
+        sid = self.sec_id_input.text().strip()
+        if not sid:
+            QMessageBox.warning(self, "خطأ", "يجب إدخال ID للشعبة الجديدة")
+            return
+            
+        # التحقق من تكرار ID
+        for sec in MOCK_COURSES[course_code]['sections']:
+            if sec['id'] == sid:
+                QMessageBox.warning(self, "خطأ", "هذا ID موجود بالفعل")
+                return
+
+        try:
+            new_sec = {
+                'id': sid,
+                'instructor': self.sec_inst_input.text(),
+                'start': int(self.sec_start_input.text()),
+                'end': int(self.sec_end_input.text()),
+                'hall': self.sec_hall_input.text(),
+                'max_capacity': int(self.sec_cap_input.text()),
+                'current_enrollment': 0
+            }
+            MOCK_COURSES[course_code]['sections'].append(new_sec)
+            QMessageBox.information(self, "نجاح", "تم إضافة الشعبة الجديدة")
+            self.load_sections_for_mgmt()
+        except ValueError:
+            QMessageBox.warning(self, "خطأ", "تأكد من صحة الأرقام")
+
+    def delete_section(self):
+        course_code = self.sched_course_combo.currentData()
+        row = self.sections_table.currentRow()
+        if not course_code or row == -1: return
+        
+        sid = self.sections_table.item(row, 0).text()
+        reply = QMessageBox.question(self, "حذف", f"هل أنت متأكد من حذف الشعبة {sid}؟",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            del MOCK_COURSES[course_code]['sections'][row]
+            self.load_sections_for_mgmt()
+
+    def handle_logout(self):
+        reply = QMessageBox.question(self, 'تسجيل خروج', 
+                                     'هل أنت متأكد أنك تريد تسجيل الخروج؟',
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                                     QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.logout_requested = True
+            self.close() 
+
+    def toggle_theme(self):
+        app = QApplication.instance()
+        self.is_dark_mode = not self.is_dark_mode
+        if self.is_dark_mode:
+            app.setStyleSheet(DARK_MODE_QSS)
+            self.theme_button.setText("☀️")
+        else:
+            app.setStyleSheet(LIGHT_MODE_QSS)
+            self.theme_button.setText("🌙")
+
+# --- نافذة تسجيل الطالب (كما هي) ---
 class RegistrationApp(QWidget):
     def __init__(self, user_id):
         super().__init__()
         self.user_id = user_id 
         self.setWindowTitle(f'نظام التسجيل - مرحباً {USER_DB[self.user_id]["name"]}')
+        self.setWindowFlags(Qt.WindowType.Window)
         self.setGeometry(100, 100, 1200, 700) 
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.registered_sections_data = [] 
         self.is_dark_mode = False 
         
-        # مجموعة أزرار لضمان اختيار واحد فقط
+        self.logout_requested = False
+        
         self.section_button_group = QButtonGroup()
         
         self.init_ui()
@@ -570,10 +928,18 @@ class RegistrationApp(QWidget):
         
         top_bar_layout = QHBoxLayout()
         top_bar_layout.setContentsMargins(0, 0, 0, 10) 
+        
         self.theme_button = QPushButton("🌙")
         self.theme_button.setProperty("class", "theme_button")
         self.theme_button.clicked.connect(self.toggle_theme)
         top_bar_layout.addWidget(self.theme_button)
+        
+        self.logout_button = QPushButton("تسجيل خروج")
+        self.logout_button.setProperty("class", "logout_button")
+        self.logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.logout_button.clicked.connect(self.handle_logout)
+        top_bar_layout.addWidget(self.logout_button)
+        
         top_bar_layout.addStretch()
         window_layout.addLayout(top_bar_layout)
         
@@ -608,16 +974,13 @@ class RegistrationApp(QWidget):
         sections_layout.addWidget(self.sections_label)
         self.available_sections_table = QTableWidget()
         
-        # إضافة عمود لزر الاختيار
-        self.available_sections_table.setColumnCount(7) # 6 + 1
+        self.available_sections_table.setColumnCount(7) 
         self.available_sections_table.setHorizontalHeaderLabels(['اختيار', 'المدرس', 'الوقت', 'القاعة', 'السعة', 'المسجلين', 'ID'])
-        self.available_sections_table.setColumnHidden(6, True) # إخفاء ID في العمود 6
+        self.available_sections_table.setColumnHidden(6, True) 
         
-        # إلغاء تحديد الصف بالكامل
         self.available_sections_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         
         self.available_sections_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        # جعل عمود الاختيار صغيراً
         self.available_sections_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents) 
 
         sections_layout.addWidget(self.available_sections_table)
@@ -636,7 +999,6 @@ class RegistrationApp(QWidget):
         self.registered_schedule_table.setHorizontalHeaderLabels(['المادة', 'المدرس', 'الوقت', 'القاعة', 'الساعات', 'ID'])
         self.registered_schedule_table.setColumnHidden(5, True)
         self.registered_schedule_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        # تفعيل تحديد الصفوف هنا للحذف
         self.registered_schedule_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.registered_schedule_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         
@@ -682,6 +1044,15 @@ class RegistrationApp(QWidget):
         main_layout.addWidget(available_frame, 1) 
         main_layout.addWidget(sections_frame, 2)  
         main_layout.addWidget(registered_frame, 2) 
+
+    def handle_logout(self):
+        reply = QMessageBox.question(self, 'تسجيل خروج', 
+                                     'هل أنت متأكد أنك تريد تسجيل الخروج؟',
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                                     QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.logout_requested = True
+            self.close() 
 
     def toggle_theme(self):
         app = QApplication.instance()
@@ -752,7 +1123,6 @@ class RegistrationApp(QWidget):
         
     @pyqtSlot(QListWidgetItem)
     def display_sections(self, current_item):
-        # إعادة تعيين مجموعة الأزرار
         self.section_button_group = QButtonGroup()
         
         if not current_item or not (current_item.flags() & Qt.ItemFlag.ItemIsEnabled):
@@ -768,11 +1138,9 @@ class RegistrationApp(QWidget):
         self.available_sections_table.setRowCount(len(sections))
         for row, section in enumerate(sections):
             
-            # إضافة زر الاختيار
             radio_button = QRadioButton()
             radio_button.setProperty("section_id", section['id'])
             
-            # (توسيط الزر في الخلية)
             cell_widget = QWidget()
             cell_layout = QHBoxLayout(cell_widget)
             cell_layout.addWidget(radio_button)
@@ -782,7 +1150,6 @@ class RegistrationApp(QWidget):
             self.available_sections_table.setCellWidget(row, 0, cell_widget)
             self.section_button_group.addButton(radio_button)
             
-            # تغيير رقم العمود + 1
             self.available_sections_table.setItem(row, 1, QTableWidgetItem(section['instructor']))
             self.available_sections_table.setItem(row, 2, QTableWidgetItem(f"{section['start']}:00 - {section['end']}:00"))
             self.available_sections_table.setItem(row, 3, QTableWidgetItem(section['hall']))
@@ -793,14 +1160,13 @@ class RegistrationApp(QWidget):
             if section['current_enrollment'] >= section['max_capacity']:
                 enrollment_item.setForeground(QColor('red'))
                 enrollment_item.setFont(QFont("Arial", 9, QFont.Weight.Bold))
-                radio_button.setEnabled(False) # تعطيل الزر إذا كانت الشعبة ممتلئة
+                radio_button.setEnabled(False) 
                 
             self.available_sections_table.setItem(row, 5, enrollment_item)
             self.available_sections_table.setItem(row, 6, QTableWidgetItem(section['id']))
             
     def add_section(self):
         
-        # قراءة الاختيار من زر الراديو
         checked_button = self.section_button_group.checkedButton()
         
         if not checked_button:
@@ -812,7 +1178,6 @@ class RegistrationApp(QWidget):
         new_section_data = get_section_data(chosen_section_id)
         if not new_section_data: return
 
-        # --- (باقي كود التحقق كما هو) ---
         user_data = USER_DB[self.user_id]
         user_transcript = user_data['transcript']
         user_program_plans = PROGRAM_PLANS[user_data['program']][user_data['level']]
@@ -845,7 +1210,7 @@ class RegistrationApp(QWidget):
             if reply == QMessageBox.StandardButton.No:
                 return
 
-        # 4. التحقق من سعة الشعبة (تم التحقق منه بتعطيل الزر، لكن نتحقق مرة أخرى للأمان)
+        # 4. التحقق من سعة الشعبة 
         if new_section_data['current_enrollment'] >= new_section_data['max_capacity']:
             QMessageBox.critical(self, 'خطأ: الشعبة ممتلئة',
                 f"لا يمكن التسجيل في شعبة '{course_name}' (المدرس: {new_section_data['instructor']}).\n"
@@ -871,7 +1236,7 @@ class RegistrationApp(QWidget):
                     f"تتعارض مع: '{reg_section['course_name']}' (شعبة {reg_section['instructor']})")
                 return 
 
-        # 7. إذا نجح كل شيء: قم بالإضافة
+        # 7. إذا نجح كل شيء
         from datetime import datetime
         current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         USER_DB[self.user_id]['schedule'].append({
@@ -888,7 +1253,6 @@ class RegistrationApp(QWidget):
         self.status_bar.showMessage(f"✅ تمت إضافة: {new_section_data['course_name']} | في: {current_time_str}", 4000)
 
     def remove_section(self):
-        # التأكد من تحديد صف الحذف
         selected_row_index = self.registered_schedule_table.currentRow()
         if selected_row_index == -1:
             QMessageBox.warning(self, 'خطأ', 'الرجاء اختيار شعبة من (جدولي) لحذفها')
@@ -935,17 +1299,19 @@ class RegistrationApp(QWidget):
         transcript_dialog = TranscriptWindow(self.user_id, self)
         transcript_dialog.exec()
 
-# --- نافذة لوحة تحكم الدكتور (محدثة) ---
+# --- نافذة لوحة تحكم الدكتور (أبسط من رئيس القسم) ---
 class DoctorDashboard(QWidget):
     def __init__(self, user_id):
         super().__init__()
         self.user_id = user_id
         self.setWindowTitle(f'لوحة تحكم المنسق - د. {USER_DB[self.user_id]["name"]}')
+        self.setWindowFlags(Qt.WindowType.Window)
         self.setGeometry(100, 100, 1000, 600)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.current_course_id = None
         self.current_section_index = -1
         self.is_dark_mode = False 
+        self.logout_requested = False
         self.init_ui()
 
     def init_ui(self):
@@ -958,6 +1324,13 @@ class DoctorDashboard(QWidget):
         self.theme_button.setProperty("class", "theme_button")
         self.theme_button.clicked.connect(self.toggle_theme)
         top_bar_layout.addWidget(self.theme_button)
+        
+        self.logout_button = QPushButton("تسجيل خروج")
+        self.logout_button.setProperty("class", "logout_button")
+        self.logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.logout_button.clicked.connect(self.handle_logout)
+        top_bar_layout.addWidget(self.logout_button)
+
         top_bar_layout.addStretch()
         window_layout.addLayout(top_bar_layout)
 
@@ -1013,6 +1386,15 @@ class DoctorDashboard(QWidget):
 
         main_layout.addWidget(left_frame, 2)
         main_layout.addWidget(right_frame, 1)
+
+    def handle_logout(self):
+        reply = QMessageBox.question(self, 'تسجيل خروج', 
+                                     'هل أنت متأكد أنك تريد تسجيل الخروج؟',
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                                     QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.logout_requested = True
+            self.close() 
 
     def toggle_theme(self):
         app = QApplication.instance()
@@ -1099,34 +1481,48 @@ class DoctorDashboard(QWidget):
         self.hall_input.clear()
         self.capacity_input.clear() 
 
-# --- (الجزء الخاص بتشغيل التطبيق) ---
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    
     app.setStyleSheet(LIGHT_MODE_QSS)
     
-    login_window = LoginWindow()
-    result = login_window.exec()
+    while True:
+        login_window = LoginWindow()
+        result = login_window.exec()
 
-    if result == QDialog.DialogCode.Accepted:
-        current_user = login_window.current_user_id 
-        current_role = login_window.current_user_role
-        
-        is_dark = login_window.is_dark_mode
-        
-        if current_role == 'student':
-            main_app_window = RegistrationApp(current_user) 
-            main_app_window.is_dark_mode = is_dark 
-            if is_dark: 
-                main_app_window.theme_button.setText("☀️")
-            main_app_window.show()
-        elif current_role == 'doctor':
-            doctor_window = DoctorDashboard(current_user)
-            doctor_window.is_dark_mode = is_dark 
-            if is_dark: 
-                doctor_window.theme_button.setText("☀️")
-            doctor_window.show()
+        if result == QDialog.DialogCode.Accepted:
+            current_user = login_window.current_user_id 
+            current_role = login_window.current_user_role
+            is_dark = login_window.is_dark_mode
             
-        sys.exit(app.exec())
-    else:
-        sys.exit(0)
+            main_window = None
+            
+            if current_role == 'student':
+                main_window = RegistrationApp(current_user) 
+            elif current_role == 'doctor':
+                main_window = DoctorDashboard(current_user)
+            elif current_role == 'hod': # فتح لوحة تحكم رئيس القسم
+                main_window = HODDashboard(current_user)
+            
+            if main_window:
+                main_window.is_dark_mode = is_dark
+                if is_dark: 
+                    app.setStyleSheet(DARK_MODE_QSS)
+                    main_window.theme_button.setText("☀️")
+                else:
+                    app.setStyleSheet(LIGHT_MODE_QSS)
+                    main_window.theme_button.setText("🌙")
+                
+                main_window.show()
+                
+                app.exec()
+                
+                if getattr(main_window, 'logout_requested', False):
+                    continue 
+                else:
+                    break 
+            else:
+                break
+        else:
+            break
+
+    sys.exit(0)
