@@ -1,0 +1,621 @@
+1   | # --- (1. استيراد المكتبات الضرورية) ---
+2   | import sys  # مكتبة النظام: نحتاجها للتحكم في بدء وإغلاق التطبيق
+3   | import random  # مكتبة العشوائية: نحتاجها لتوليد أرقام معرفات الطلاب وكلمات المرور
+4   | import re  # مكتبة التعابير النمطية (Regex): للتحقق من صيغة رقم الجوال
+5   | import PyQt6  # مكتبة الواجهات الرسومية
+6   | import Latest  # استيراد ملفنا الخارجي الذي يحتوي على دوال قاعدة البيانات SQLite
+7   | from Latest import (  # استيراد دوال محددة من ملف Latest.py لسهولة الاستخدام
+8   |     get_connection,
+9   |     add_student,
+10  |     get_transcript,
+11  |     fetch_courses_with_sections,
+12  |     upsert_course,
+13  |     delete_course,
+14  |     upsert_section,
+15  |     delete_section,
+16  |     list_students,
+17  |     delete_student_record,
+18  |     list_professors,
+19  |     delete_professor_account,
+20  |     increment_section_enrollment,
+21  |     decrement_section_enrollment,
+22  |     get_courses_by_instructor,
+23  | )
+24  | # استيراد أدوات الواجهة من PyQt6 (الأزرار، النصوص، الجداول، النوافذ...)
+25  | from PyQt6.QtWidgets import (
+26  |     QApplication, QWidget, QHBoxLayout, QVBoxLayout,
+27  |     QPushButton, QListWidget, QListWidgetItem, QLabel, QFrame,
+28  |     QMessageBox, QDialog, QLineEdit, QFormLayout,
+29  |     QTableWidget, QTableWidgetItem, QHeaderView,
+30  |     QComboBox, QInputDialog, QTabWidget,
+31  |     QGraphicsDropShadowEffect,
+32  |     QStatusBar,
+33  |     QRadioButton, QButtonGroup  # أدوات أزرار الاختيار (الدوائر)
+34  | )
+35  | from PyQt6.QtCore import Qt, pyqtSlot, QRegularExpression  # أدوات التحكم في المحاذاة والإشارات
+36  | from PyQt6.QtGui import QFont, QColor, QRegularExpressionValidator  # أدوات الخطوط والألوان والتحقق
+37  | 
+38  | # --- (2. تنسيق الواجهة - CSS) ---
+39  | 
+40  | # تعريف متغير نصي يحتوي على كود CSS لتصميم الوضع الفاتح (Light Mode)
+41  | LIGHT_MODE_QSS = """
+42  | QDialog, QWidget { background-color: #f0f2f5; font-family: "Arial", sans-serif; color: #333; } /* خلفية النوافذ */
+43  | QFrame[class="card"], QWidget[class="card"] { background-color: #ffffff; border-radius: 10px; } /* البطاقات البيضاء */
+44  | QLabel { font-size: 14px; font-weight: bold; color: #333; } /* تنسيق النصوص */
+45  | /* ... (تنسيق حقول الإدخال والأزرار) ... */
+46  | QLineEdit, QComboBox {
+47  |     font-size: 14px; padding: 10px 15px; border: 1px solid #d0d0d0;
+48  |     border-radius: 5px; background-color: #fafafa; color: black;
+49  | }
+50  | /* تصميم زر الراديو (الدائرة) ليكون شكله حديثاً */
+51  | QRadioButton::indicator {
+52  |     width: 16px; height: 16px; border-radius: 9px; border: 2px solid #999; background-color: #f0f0f0;
+53  | }
+54  | QRadioButton::indicator:checked {
+55  |     border: 2px solid #007bff; /* حدود زرقاء عند الاختيار */
+56  |     background-color: qradialgradient(cx:0.5, cy:0.5, radius: 0.5, fx:0.5, fy:0.5, stop:0.4 #007bff, stop:0.5 #f0f0f0); /* نقطة زرقاء في الوسط */
+57  | }
+58  | """
+59  | 
+60  | # تعريف متغير نصي لتصميم الوضع الداكن (Dark Mode)
+61  | DARK_MODE_QSS = """
+62  | QDialog, QWidget { background-color: #2b2b2b; font-family: "Arial", sans-serif; color: #f0f0f0; } /* خلفية غامقة */
+63  | QFrame[class="card"], QWidget[class="card"] { background-color: #3c3c3c; border-radius: 10px; } /* بطاقات رمادية */
+64  | /* ... (باقي التنسيقات للألوان الغامقة) ... */
+65  | QRadioButton::indicator:checked {
+66  |     border: 2px solid #007bff;
+67  |     background-color: qradialgradient(cx:0.5, cy:0.5, radius: 0.5, fx:0.5, fy:0.5, stop:0.4 #007bff, stop:0.5 #444);
+68  | }
+69  | """
+70  | 
+71  | # --- (3. المتغيرات العامة والذاكرة المؤقتة) ---
+72  | 
+73  | USER_DB = {}  # قاموس (Dictionary) يعمل كذاكرة مؤقتة (Cache) لحفظ بيانات المستخدمين المسجلين دخولهم
+74  | 
+75  | STAFF_REGISTRATION_CODE = "123"  # الرمز السري المطلوب لإنشاء حساب دكتور جديد
+76  | BOOTSTRAP_ADMIN = {  # بيانات حساب المدير الافتراضي
+77  |     "student_id": "admin",
+78  |     "email": "admin@odus.local",
+79  |     "password": "admin",
+80  |     "display_name": "Super Admin",
+81  | }
+82  | 
+83  | def prompt_staff_code(parent, title, prompt_text):
+84  |     """دالة تظهر نافذة تطلب رمز سري قبل العمليات الحساسة"""
+85  |     code, ok = QInputDialog.getText(parent, title, prompt_text, QLineEdit.EchoMode.Password)
+86  |     if not ok: return False  # إذا ضغط إلغاء
+87  |     if code.strip() != STAFF_REGISTRATION_CODE:  # إذا الرمز خطأ
+88  |         QMessageBox.critical(parent, 'رمز غير صحيح', 'رمز التسجيل غير صحيح.')
+89  |         return False
+90  |     return True
+91  | 
+92  | def ensure_bootstrap_admin():
+93  |     """دالة لإنشاء حساب الأدمن الافتراضي في قاعدة البيانات إذا لم يكن موجوداً"""
+94  |     create_user_account(
+95  |         BOOTSTRAP_ADMIN["student_id"], BOOTSTRAP_ADMIN["email"],
+96  |         BOOTSTRAP_ADMIN["password"], "admin", BOOTSTRAP_ADMIN["display_name"],
+97  |     )
+98  | 
+99  | COURSE_CACHE = {}  # مخزن مؤقت للمواد والشعب لتقليل الطلب على قاعدة البيانات
+100 | 
+101 | def refresh_course_cache():
+102 |     """دالة تسحب أحدث بيانات المواد والشعب من قاعدة البيانات وتضعها في الكاش"""
+103 |     global COURSE_CACHE
+104 |     COURSE_CACHE = fetch_courses_with_sections() # دالة من ملف Latest.py
+105 | 
+106 | refresh_course_cache()  # استدعاء أولي لتعبئة البيانات عند تشغيل البرنامج
+107 | 
+108 | # تعريف المواد المتاحة لكل تخصص ومستوى (بيانات ثابتة)
+109 | PROGRAM_PLANS = {
+110 |     'Computer': {'Level 1': ['CS101', 'MATH201', 'ENGR101'], 'Level 2': ['CIRC210', 'MATH301']},
+111 |     'Communications': {'Level 1': ['CS101', 'MATH201', 'ENGR101'], 'Level 2': ['CIRC210', 'COMM310']},
+112 |     'Power': {'Level 1': ['CS101', 'MATH201', 'ENGR101'], 'Level 2': ['CIRC210', 'MATH301']},
+113 |     'Biomedical': {'Level 1': ['CS101', 'MATH201'], 'Level 2': ['CIRC210', 'MATH301']}
+114 | }
+115 | 
+116 | PROGRAM_DISPLAY_MAP = {'Comm': 'Communications', 'Communications': 'Communications'} # لتوحيد الأسماء
+117 | 
+118 | def get_display_program(program_code):
+119 |     """تحويل الكود المختصر للبرنامج إلى الاسم الكامل"""
+120 |     return PROGRAM_DISPLAY_MAP.get(program_code, program_code)
+121 | 
+122 | CREDIT_LIMITS = {'min': 12, 'max': 18} # حدود الساعات المسموحة للتسجيل
+123 | 
+124 | # --- (4. دوال التعامل مع قاعدة البيانات SQLite) ---
+125 | 
+126 | def create_user_account(student_id, email, password, role, display_name=None, mobile=None):
+127 |     """إنشاء أو تحديث حساب مستخدم في جدول users"""
+128 |     conn = get_connection() # فتح اتصال
+129 |     cur = conn.cursor()
+130 |     # التحقق هل المستخدم موجود مسبقاً؟
+131 |     cur.execute("SELECT user_id FROM users WHERE (student_id = ? AND student_id IS NOT NULL) OR (email = ? AND email IS NOT NULL)", (student_id, email),)
+132 |     row = cur.fetchone()
+133 |     if row: # إذا موجود، قم بالتحديث (Update)
+134 |         cur.execute("UPDATE users SET student_id = ?, email = ?, password_hash = ?, role = ?, display_name = ?, mobile = ? WHERE user_id = ?", (student_id, email, password, role, display_name, mobile, row[0]),)
+135 |     else: # إذا غير موجود، قم بالإضافة (Insert)
+136 |         cur.execute("INSERT INTO users (student_id, email, password_hash, role, display_name, mobile) VALUES (?, ?, ?, ?, ?, ?)", (student_id, email, password, role, display_name, mobile),)
+137 |     conn.commit() # حفظ التغييرات
+138 |     conn.close() # إغلاق الاتصال
+139 | 
+140 | def user_identifier_exists(student_id):
+141 |     """التحقق السريع هل المعرف مستخدم أم لا"""
+142 |     conn = get_connection()
+143 |     cur = conn.cursor()
+144 |     cur.execute("SELECT 1 FROM users WHERE student_id = ?", (student_id,))
+145 |     exists = cur.fetchone() is not None
+146 |     conn.close()
+147 |     return exists
+148 | 
+149 | def generate_unique_identifier(prefix):
+150 |     """توليد معرف فريد عشوائي (مثل dr_1234) غير مكرر"""
+151 |     while True:
+152 |         candidate = f"{prefix}{random.randint(1000, 9999)}"
+153 |         if candidate in USER_DB: continue # موجود في الكاش؟ حاول مرة أخرى
+154 |         if not user_identifier_exists(candidate): # موجود في قاعدة البيانات؟
+155 |             return candidate # إذا غير موجود، هذا معرف صالح
+156 | 
+157 | def generate_password():
+158 |     """توليد كلمة مرور عشوائية قوية"""
+159 |     digits = ''.join(str(random.randint(0, 9)) for _ in range(7))
+160 |     return f"Ar@{digits}"
+161 | 
+162 | ensure_bootstrap_admin() # التأكد من وجود الأدمن الآن
+163 | 
+164 | def db_login(academic_id, password):
+165 |     """محاولة تسجيل الدخول والتحقق من صحة البيانات من قاعدة البيانات"""
+166 |     conn = get_connection()
+167 |     cur = conn.cursor()
+168 |     # جلب بيانات المستخدم والطالب المرتبط به (JOIN)
+169 |     cur.execute("""
+170 |         SELECT u.role, u.password_hash, COALESCE(s.name, u.display_name),
+171 |                COALESCE(s.email, u.email), s.program, s.level
+172 |         FROM users u LEFT JOIN students s ON u.student_id = s.student_id
+173 |         WHERE u.student_id = ? """, (academic_id,))
+174 |     row = cur.fetchone()
+175 |     conn.close()
+176 |     
+177 |     if not row: return None # المستخدم غير موجود
+178 |     role, stored_password, name, email, program, level = row
+179 |     if stored_password != password: return None # كلمة المرور خطأ
+180 |     
+181 |     # إرجاع بيانات المستخدم كقاموس
+182 |     return {"id": academic_id, "role": role, "name": name or "", "email": email or "", "program": program, "level": level}
+183 | 
+184 | # --- (5. دوال مساعدة عامة) ---
+185 | 
+186 | def apply_shadow(widget):
+187 |     """إضافة تأثير ظل جمالي للعنصر (البطاقة)"""
+188 |     shadow = QGraphicsDropShadowEffect()
+189 |     shadow.setBlurRadius(25)
+190 |     shadow.setColor(QColor(0, 0, 0, 80))
+191 |     shadow.setOffset(0, 5)
+192 |     widget.setGraphicsEffect(shadow)
+193 |     
+194 | def get_section_data(section_id_to_find):
+195 |     """البحث عن تفاصيل شعبة معينة داخل الكاش باستخدام ID"""
+196 |     for course_code, course_info in COURSE_CACHE.items():
+197 |         for section in course_info['sections']:
+198 |             if section['id'] == section_id_to_find:
+199 |                 # نسخ البيانات وإضافة معلومات المادة لها
+200 |                 section_data = section.copy()
+201 |                 section_data['course_name'] = course_info['name']
+202 |                 section_data['course_code'] = course_code
+203 |                 section_data['credit_hours'] = course_info['credit_hours']
+204 |                 section_data['prerequisites'] = course_info['prerequisites']
+205 |                 return section_data
+206 |     return None
+207 | 
+208 | def calculate_passed_hours(transcript_list):
+209 |     """حساب مجموع الساعات للمواد التي اجتازها الطالب"""
+210 |     total_hours = 0
+211 |     for course_code in transcript_list:
+212 |         if course_code in COURSE_CACHE:
+213 |             total_hours += COURSE_CACHE[course_code]['credit_hours']
+214 |     return total_hours
+215 | 
+216 | def extract_course_number(course_code):
+217 |     """استخراج الرقم من رمز المادة (CS101 -> 101)"""
+218 |     match = re.search(r'\d+', course_code)
+219 |     if match: return int(match.group())
+220 |     return None
+221 | 
+222 | def is_course_allowed_for_level(course_code, student_level):
+223 |     """التحقق هل المادة مسموحة لمستوى الطالب (1 أو 2)"""
+224 |     course_number = extract_course_number(course_code)
+225 |     if course_number is None: return False
+226 |     
+227 |     if student_level == 'Level 1':
+228 |         return course_number == 110 # مثال: المستوى الأول فقط مواد 110
+229 |     elif student_level == 'Level 2':
+230 |         return 100 <= course_number <= 299 # المستوى الثاني من 100 إلى 299
+231 |     else:
+232 |         return False
+233 | 
+234 | # --- (6. فئات الواجهات الرسومية - Classes) ---
+235 | 
+236 | # --- نافذة إنشاء الحساب ---
+237 | class RegisterWindow(QDialog):
+238 |     def __init__(self, role='student', parent=None):
+239 |         super().__init__(parent)
+240 |         self.role = role # تحديد الدور (طالب، دكتور...)
+241 |         self.setWindowTitle(f'إنشاء حساب {self.role} جديد')
+242 |         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft) # اتجاه الواجهة عربي
+243 |         # ... (إعدادات الحجم والتخطيط) ...
+244 |         self.setGeometry(0, 0, 600, 500)
+245 | 
+246 |         # إنشاء بطاقة بيضاء داخل النافذة
+247 |         card_widget = QWidget()
+248 |         card_widget.setProperty("class", "card") # لتطبيق الـ CSS
+249 |         apply_shadow(card_widget) # إضافة الظل
+250 |         
+251 |         # تخطيط عمودي داخل البطاقة
+252 |         card_layout = QVBoxLayout(card_widget)
+253 |         
+254 |         # العنوان
+255 |         title = QLabel(f'إنشاء حساب {self.role} جديد')
+256 |         title.setObjectName("TitleLabel")
+257 |         card_layout.addWidget(title)
+258 |         
+259 |         # نموذج إدخال البيانات (Form Layout)
+260 |         form_layout = QFormLayout()
+261 |         self.name_input = QLineEdit()
+262 |         self.email_input = QLineEdit()
+263 |         self.mobile_input = QLineEdit()
+264 |         
+265 |         # إعداد التحقق من رقم الجوال (يجب أن يبدأ بـ 05 ويكون 10 أرقام)
+266 |         mobile_validator = QRegularExpressionValidator(QRegularExpression("^05[0-9]{8}$"))
+267 |         self.mobile_input.setValidator(mobile_validator)
+268 |         self.mobile_input.setPlaceholderText("05XXXXXXXX")
+269 |         
+270 |         # إضافة الحقول للنموذج
+271 |         form_layout.addRow('الاسم الكامل:', self.name_input)
+272 |         form_layout.addRow('البريد الإلكتروني:', self.email_input)
+273 |         form_layout.addRow('رقم الجوال:', self.mobile_input)
+274 |         
+275 |         # إذا كان التسجيل لطالب، أضف خيارات التخصص والمستوى
+276 |         if self.role == 'student':
+277 |             self.program_combo = QComboBox()
+278 |             self.program_combo.addItems(PROGRAM_PLANS.keys())
+279 |             form_layout.addRow('البرنامج:', self.program_combo)
+280 |             
+281 |             self.level_combo = QComboBox()
+282 |             self.level_combo.addItems(['Level 1', 'Level 2']) 
+283 |             form_layout.addRow('المستوى الحالي:', self.level_combo)
+284 |         
+285 |         card_layout.addLayout(form_layout)
+286 |         
+287 |         # زر التسجيل
+288 |         self.register_button = QPushButton('إنشاء الحساب')
+289 |         self.register_button.clicked.connect(self.create_account) # ربط الزر بدالة الإنشاء
+290 |         card_layout.addWidget(self.register_button)
+291 | 
+292 |         # التخطيط الرئيسي للنافذة
+293 |         main_layout = QHBoxLayout(self)
+294 |         main_layout.addStretch()
+295 |         main_layout.addWidget(card_widget)
+296 |         main_layout.addStretch()
+297 | 
+298 |     def create_account(self):
+299 |         """منطق إنشاء الحساب عند الضغط على الزر"""
+300 |         name = self.name_input.text()
+301 |         email = self.email_input.text()
+302 |         mobile = self.mobile_input.text().strip()
+303 |         
+304 |         # التحقق من أن الحقول ليست فارغة
+305 |         if not name or not email or not mobile:
+306 |             QMessageBox.warning(self, 'خطأ', 'الرجاء ملء جميع الحقول')
+307 |             return
+308 |         
+309 |         # التحقق من صحة الجوال يدوياً للتأكيد
+310 |         if not mobile.startswith('05') or len(mobile) != 10 or not mobile.isdigit():
+311 |             QMessageBox.warning(self, 'خطأ', 'رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام فقط')
+312 |             return
+313 |             
+314 |         new_password = generate_password() # توليد كلمة مرور
+315 | 
+316 |         if self.role == 'student':
+317 |             # تجهيز بيانات الطالب
+318 |             program = self.program_combo.currentText()
+319 |             program_for_db = 'Comm' if program == 'Communications' else program
+320 |             level_label = self.level_combo.currentText()
+321 |             
+322 |             # محاكاة مواد مجتازة إذا كان في المستوى 2
+323 |             mock_transcript = PROGRAM_PLANS[program]['Level 1'] if level_label == 'Level 2' else []
+324 |             
+325 |             # توليد رقم جامعي عشوائي
+326 |             while True:
+327 |                 new_academic_id = str(random.randint(100000, 999999))
+328 |                 if new_academic_id in USER_DB: continue
+329 |                 if not user_identifier_exists(new_academic_id): break
+330 |             
+331 |             # حفظ الطالب في قاعدة البيانات (جدول Students)
+332 |             level_int = int(level_label.split()[-1]) # تحويل "Level 1" إلى 1
+333 |             db_message = add_student(new_academic_id, name, email, program_for_db, level_int)
+334 |             
+335 |             # إذا فشل الحفظ في القاعدة
+336 |             if not db_message.startswith("✅"):
+337 |                 QMessageBox.critical(self, 'خطأ في التسجيل', db_message)
+338 |                 return
+339 |                 
+340 |             # إنشاء حساب دخول (جدول Users)
+341 |             create_user_account(new_academic_id, email, new_password, "student", name, mobile)
+342 |             
+343 |             # تحديث الكاش
+344 |             USER_DB[new_academic_id] = {
+345 |                 'password': new_password, 'name': name, 'email': email,
+346 |                 'mobile': mobile, 'role': 'student', 'program': program, 
+347 |                 'level': level_label, 'transcript': mock_transcript, 'schedule': [] 
+348 |             }
+349 |             # رسالة نجاح
+350 |             msg = (f"المعرف الجامعي: {new_academic_id}\nكلمة المرور: {new_password}\n{db_message}")
+351 |             
+352 |         elif self.role == 'doctor':
+353 |             # إنشاء حساب دكتور
+354 |             new_academic_id = generate_unique_identifier("dr_")
+355 |             create_user_account(new_academic_id, email, new_password, "doctor", name, mobile)
+356 |             USER_DB[new_academic_id] = {'password': new_password, 'name': name, 'email': email, 'mobile': mobile, 'role': 'doctor'}
+357 |             msg = (f"معرف الدكتور: {new_academic_id}\nكلمة المرور: {new_password}")
+358 |         else:
+359 |             # إنشاء حساب إداري
+360 |             new_academic_id = generate_unique_identifier("adm_")
+361 |             create_user_account(new_academic_id, email, new_password, "admin", name, mobile)
+362 |             USER_DB[new_academic_id] = {'password': new_password, 'name': name, 'email': email, 'mobile': mobile, 'role': 'admin'}
+363 |             msg = (f"معرف المدير: {new_academic_id}\nكلمة المرور: {new_password}")
+364 |             
+365 |         QMessageBox.information(self, 'تم إنشاء الحساب بنجاح', msg)
+366 |         self.accept() # إغلاق النافذة بنجاح
+367 | 
+368 | # --- نافذة تسجيل الدخول ---
+369 | class LoginWindow(QDialog):
+370 |     def __init__(self, parent=None):
+371 |         super().__init__(parent)
+372 |         self.setWindowTitle('تسجيل الدخول - نظام ODUS')
+373 |         # ... (إعدادات التصميم والتخطيط) ...
+374 |         self.is_dark_mode = False 
+375 | 
+376 |         # زر تغيير الثيم (ليلي/نهاري)
+377 |         self.theme_button = QPushButton("🌙")
+378 |         self.theme_button.setProperty("class", "theme_button")
+379 |         self.theme_button.clicked.connect(self.toggle_theme)
+380 | 
+381 |         # حقول الإدخال
+382 |         self.id_input = QLineEdit()
+383 |         self.id_input.setPlaceholderText('المعرف (مثال: 123456)')
+384 |         self.pass_input = QLineEdit()
+385 |         self.pass_input.setEchoMode(QLineEdit.EchoMode.Password) # إخفاء كلمة المرور
+386 |         
+387 |         # الأزرار
+388 |         self.login_button = QPushButton('تسجيل الدخول')
+389 |         self.register_student_button = QPushButton('إنشاء حساب طالب جديد')
+390 |         
+391 |         # ربط الأزرار بالدوال
+392 |         self.login_button.clicked.connect(self.handle_login)
+393 |         self.register_student_button.clicked.connect(self.handle_register_student)
+394 |         # ... (تجميع العناصر في التخطيط) ...
+395 | 
+396 |     def toggle_theme(self):
+397 |         """تبديل بين الوضع الداكن والفاتح"""
+398 |         app = QApplication.instance()
+399 |         self.is_dark_mode = not self.is_dark_mode
+400 |         if self.is_dark_mode:
+401 |             app.setStyleSheet(DARK_MODE_QSS) # تطبيق ستايل الظلام
+402 |             self.theme_button.setText("☀️")
+403 |         else:
+404 |             app.setStyleSheet(LIGHT_MODE_QSS) # تطبيق ستايل النور
+405 |             self.theme_button.setText("🌙")
+406 | 
+407 |     def handle_login(self):
+408 |         """التحقق من بيانات الدخول"""
+409 |         academic_id = self.id_input.text().strip()
+410 |         password = self.pass_input.text()
+411 |         
+412 |         # التحقق عبر قاعدة البيانات
+413 |         db_user = db_login(academic_id, password)
+414 |         if db_user is not None:
+415 |             user_role = db_user["role"] or "student"
+416 |             # تحديث الكاش بالبيانات الجديدة
+417 |             USER_DB[academic_id] = {
+418 |                 'password': password, 'name': db_user.get('name', ''),
+419 |                 'role': user_role, 'program': db_user.get('program', ''),
+420 |                 'level': str(db_user.get('level', '')),
+421 |                 'transcript': [], 'schedule': []
+422 |             }
+423 |             # حفظ المستخدم الحالي وإغلاق النافذة
+424 |             self.current_user_id = academic_id
+425 |             self.current_user_role = user_role
+426 |             self.accept()
+427 |             return
+428 |         
+429 |         QMessageBox.warning(self, 'خطأ', 'المعرف أو كلمة المرور غير صحيحة')
+430 |             
+431 |     def handle_register_student(self):
+432 |         """فتح نافذة تسجيل طالب جديد"""
+433 |         register_dialog = RegisterWindow(role='student', parent=self)
+434 |         register_dialog.exec()
+435 | 
+436 | # --- التطبيق الرئيسي للطالب ---
+437 | class RegistrationApp(QWidget):
+438 |     def __init__(self, user_id):
+439 |         super().__init__()
+440 |         self.user_id = user_id 
+441 |         self.section_button_group = QButtonGroup() # مجموعة لضمان اختيار زر راديو واحد فقط
+442 |         self.init_ui() # بناء الواجهة
+443 |         self.load_schedule_and_courses() # تحميل البيانات
+444 | 
+445 |     def init_ui(self):
+446 |         # ... (تجهيز التخطيطات الرئيسية) ...
+447 |         
+448 |         # 1. القائمة اليمنى: المواد المتاحة
+449 |         self.available_courses_list = QListWidget()
+450 |         self.available_courses_list.currentItemChanged.connect(self.display_sections) # عند اختيار مادة اعرض شعبها
+451 | 
+452 |         # 2. القائمة الوسطى: الشعب (جدول)
+453 |         self.available_sections_table = QTableWidget()
+454 |         self.available_sections_table.setColumnCount(7)
+455 |         # إضافة عمود 'اختيار' لوضع زر الراديو
+456 |         self.available_sections_table.setHorizontalHeaderLabels(['اختيار', 'المدرس', 'الوقت', 'القاعة', 'السعة', 'المسجلين', 'ID'])
+457 |         
+458 |         self.add_button = QPushButton('إضافة الشعبة المحددة <--')
+459 |         self.add_button.clicked.connect(self.add_section) # زر الإضافة
+460 | 
+461 |         # 3. القائمة اليسرى: الجدول المسجل
+462 |         self.registered_schedule_table = QTableWidget()
+463 |         self.remove_button = QPushButton('--> حذف الشعبة المحددة')
+464 |         self.remove_button.clicked.connect(self.remove_section) # زر الحذف
+465 | 
+466 |         # شريط الحالة لعرض الرسائل
+467 |         self.status_bar = QStatusBar()
+468 |         
+469 |         # ... (إضافة كل العناصر للتخطيط الرئيسي) ...
+470 | 
+471 |     @pyqtSlot(QListWidgetItem)
+472 |     def display_sections(self, current_item):
+473 |         """عرض الشعب الخاصة بالمادة المختارة في الجدول الأوسط"""
+474 |         self.section_button_group = QButtonGroup() # إعادة تعيين المجموعة
+475 |         
+476 |         # جلب بيانات المادة المختارة
+477 |         course_id = current_item.data(Qt.ItemDataRole.UserRole)
+478 |         course_info = COURSE_CACHE.get(course_id)
+479 |         sections = course_info['sections']
+480 |         
+481 |         self.available_sections_table.setRowCount(len(sections))
+482 |         for row, section in enumerate(sections):
+483 |             # إنشاء زر اختيار (Radio Button)
+484 |             radio_button = QRadioButton()
+485 |             radio_button.setProperty("section_id", section['id']) # تخزين معرف الشعبة داخل الزر
+486 |             
+487 |             # وضع الزر في منتصف الخلية
+488 |             cell_widget = QWidget()
+489 |             cell_layout = QHBoxLayout(cell_widget)
+490 |             cell_layout.addWidget(radio_button)
+491 |             cell_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+492 |             self.available_sections_table.setCellWidget(row, 0, cell_widget)
+493 |             self.section_button_group.addButton(radio_button) # إضافته للمجموعة
+494 |             
+495 |             # تعبئة باقي البيانات
+496 |             self.available_sections_table.setItem(row, 1, QTableWidgetItem(section['instructor']))
+497 |             # ... (الوقت، القاعة، السعة) ...
+498 |             
+499 |             # التحقق من امتلاء الشعبة
+500 |             if section['current_enrollment'] >= section['max_capacity']:
+501 |                 radio_button.setEnabled(False) # تعطيل الزر (لا يمكن الاختيار)
+502 | 
+503 |     def add_section(self):
+504 |         """المنطق الرئيسي لإضافة الشعبة (Validation Core)"""
+505 |         
+506 |         # 1. معرفة أي زر راديو تم اختياره
+507 |         checked_button = self.section_button_group.checkedButton()
+508 |         if not checked_button:
+509 |             QMessageBox.warning(self, 'خطأ', 'الرجاء اختيار شعبة أولاً')
+510 |             return
+511 |         chosen_section_id = checked_button.property("section_id")
+512 |         new_section_data = get_section_data(chosen_section_id)
+513 | 
+514 |         # 2. التحقق من قيود المستوى (Level Check)
+515 |         if not is_course_allowed_for_level(course_code, student_level):
+516 |             QMessageBox.critical(self, 'خطأ', 'المادة غير مسموحة لمستواك الدراسي')
+517 |             return
+518 | 
+519 |         # 3. التحقق من المتطلبات السابقة (Prerequisites)
+520 |         if missing_prereqs:
+521 |             QMessageBox.critical(self, 'خطأ', f'لم تجتز المتطلبات: {missing_prereqs}')
+522 |             return
+523 | 
+524 |         # 4. التحقق من السعة (Capacity Check)
+525 |         if new_section_data['current_enrollment'] >= new_section_data['max_capacity']:
+526 |             QMessageBox.critical(self, 'خطأ', 'الشعبة ممتلئة')
+527 |             return
+528 | 
+529 |         # 5. التحقق من الحد الأقصى للساعات (Credit Limit)
+530 |         if (current_registered_hours + course_credits) > CREDIT_LIMITS['max']:
+531 |             QMessageBox.critical(self, 'خطأ', 'تجاوزت الحد الأقصى للساعات')
+532 |             return
+533 | 
+534 |         # 6. التحقق من تعارض الوقت (Time Conflict)
+535 |         for reg_section in self.registered_sections_data:
+536 |             if (new_start < reg_end) and (new_end > reg_start): # معادلة التقاطع الزمني
+537 |                 QMessageBox.critical(self, 'خطأ', 'يوجد تعارض في الوقت مع مادة أخرى')
+538 |                 return 
+539 | 
+540 |         # 7. الحفظ وإتمام العملية
+541 |         success, error_reason = increment_section_enrollment(chosen_section_id) # تحديث قاعدة البيانات
+542 |         if success:
+543 |             USER_DB[self.user_id]['schedule'].append({'id': chosen_section_id}) # تحديث الكاش
+544 |             self.load_schedule_and_courses() # تحديث الشاشة
+545 |             self.status_bar.showMessage(f"✅ تمت إضافة المادة بنجاح", 4000)
+546 | 
+547 |     def remove_section(self):
+548 |         """حذف شعبة من الجدول"""
+549 |         # ... (منطق مشابه للإضافة ولكن للحذف، مع التحقق من الحد الأدنى للساعات) ...
+550 |         success, error_reason = decrement_section_enrollment(section_id_to_remove)
+551 |         # ...
+552 | 
+553 | # --- لوحة تحكم الأدمن ---
+554 | class AdminDashboard(QWidget):
+555 |     def __init__(self, user_id):
+556 |         # ... (بناء الواجهة باستخدام التبويبات Tabs) ...
+557 |         self.tab_widget = QTabWidget()
+558 |         self.tab_widget.addTab(self.build_courses_tab(), "المقررات") # تبويب إدارة المواد
+559 |         self.tab_widget.addTab(self.build_sections_tab(), "الشعب") # تبويب إدارة الشعب
+560 |         self.tab_widget.addTab(self.build_users_tab(), "المستخدمون") # تبويب إدارة المستخدمين
+561 | 
+562 |     def handle_save_course(self):
+563 |         """حفظ أو تعديل مادة في قاعدة البيانات"""
+564 |         code = self.course_code_input.text()
+565 |         # ... (قراءة الحقول) ...
+566 |         upsert_course(code, name, credits, lecture_hours, max_capacity, lab_hours) # دالة الحفظ
+567 |         refresh_course_cache() # تحديث الكاش
+568 |         self.load_courses() # تحديث الجدول
+569 | 
+570 |     def handle_add_doctor(self):
+571 |         """إضافة دكتور جديد (يتطلب رمز موظفين)"""
+572 |         if prompt_staff_code(self, 'رمز الموظفين', 'أدخل الرمز:'):
+573 |             dialog = RegisterWindow(role='doctor', parent=self)
+574 |             dialog.exec()
+575 | 
+576 | # --- لوحة تحكم الدكتور ---
+577 | class DoctorDashboard(QWidget):
+578 |     def __init__(self, user_id):
+579 |         # ... (بناء واجهة مبسطة للدكتور) ...
+580 |         
+581 |     def load_my_courses(self):
+582 |         """جلب المواد التي يدرسها هذا الدكتور فقط"""
+583 |         doctor_name = USER_DB[self.user_id]["name"]
+584 |         my_courses = get_courses_by_instructor(doctor_name)
+585 |         # ... (عرضها في الجدول) ...
+586 | 
+587 |     def handle_add_student_to_section(self):
+588 |         """السماح للدكتور بإضافة طالب يدوياً للشعبة (Override)"""
+589 |         # ... (اختيار الطالب من قائمة وإضافته للقاعدة) ...
+590 |         increment_section_enrollment(section_id)
+591 | 
+592 | # --- (7. نقطة انطلاق التطبيق Main Execution) ---
+593 | if __name__ == '__main__':
+594 |     app = QApplication(sys.argv) # إنشاء تطبيق كيو تي
+595 |     app.setStyleSheet(LIGHT_MODE_QSS) # تطبيق الثيم الافتراضي
+596 |     
+597 |     while True: # حلقة لانهائية لضمان العودة لتسجيل الدخول عند الخروج
+598 |         login_window = LoginWindow()
+599 |         result = login_window.exec() # تشغيل نافذة الدخول وانتظار النتيجة
+600 | 
+601 |         if result == QDialog.DialogCode.Accepted: # إذا تم تسجيل الدخول بنجاح
+602 |             current_user = login_window.current_user_id 
+603 |             current_role = login_window.current_user_role
+604 |             
+605 |             # فتح النافذة المناسبة حسب الدور
+606 |             if current_role == 'student':
+607 |                 main_window = RegistrationApp(current_user)
+608 |             elif current_role == 'admin':
+609 |                 main_window = AdminDashboard(current_user)
+610 |             elif current_role == 'doctor':
+611 |                 main_window = DoctorDashboard(current_user)
+612 |             
+613 |             main_window.show() # إظهار النافذة الرئيسية
+614 |             exit_code = app.exec() # تشغيل حلقة الأحداث (Event Loop)
+615 |             
+616 |             if exit_code != 100: # 100 هو رمز الخروج (Signout)، أي شيء آخر يعني إغلاق البرنامج
+617 |                 break
+618 |         else:
+619 |             break # إذا تم إغلاق نافذة الدخول، أنهِ البرنامج
+620 |     
+621 |     sys.exit(0)
